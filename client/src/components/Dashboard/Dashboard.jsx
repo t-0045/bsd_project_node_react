@@ -2,50 +2,97 @@ import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 
 // יבואי MUI
-import { AccessTime, Event, People, TaskAlt } from "@mui/icons-material"
+import { AccessTime, Event, Pause, People, Stop, TaskAlt } from "@mui/icons-material"
 import { Alert, Box, Button, Card, CardContent, CircularProgress, Grid, Paper, Stack, Typography } from "@mui/material"
-import { getAppointments, getCustomers, getHealth, getTasks, getTimers } from "../../api"
+import { changeSubtaskTimerStatus, getAppointments, getCustomers, getHealth, getTasks } from "../../api"
 
 const Dashboard = ({ user }) => {
   const [apiStatus, setApiStatus] = useState('loading')
-  const [data, setData] = useState({ customers: [], tasks: [], appointments: [], timers: [] })
+  const [data, setData] = useState({ customers: [], tasks: [], appointments: [] })
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
+  const [appointmentView, setAppointmentView] = useState('today')
+
+  const loadDashboard = async () => {
+    try {
+      const [customers, tasks, appointments] = await Promise.all([
+        getCustomers(), getTasks(), getAppointments()
+      ])
+      setData({ customers, tasks, appointments })
+      setApiStatus('online')
+    } catch (requestError) {
+      setApiStatus('offline')
+      setError(requestError.response?.data?.error || 'לא ניתן לטעון את נתוני הדשבורד')
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   useEffect(() => {
-    const loadDashboard = async () => {
-      try {
-        const [customers, tasks, appointments, timers] = await Promise.all([
-          getCustomers(), getTasks(), getAppointments(), getTimers()
-        ])
-        setData({ customers, tasks, appointments, timers })
-        setApiStatus('online')
-      } catch (requestError) {
-        setApiStatus('offline')
-        setError(requestError.response?.data?.error || 'לא ניתן לטעון את נתוני הדשבורד')
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
     getHealth().catch(() => setApiStatus('offline'))
     loadDashboard()
   }, [])
+
+  const handleTimerStatus = async (action) => {
+    if (!activeTimer) return
+    try {
+      await changeSubtaskTimerStatus(activeTimer.taskId, activeTimer.subtaskIndex, action)
+      await loadDashboard()
+    } catch (requestError) {
+      setError(requestError.response?.data?.error || 'לא ניתן לעדכן את הטיימר')
+    }
+  }
 
   const cards = [
     { label: 'לקוחות', value: data.customers.length, icon: <People color="primary" fontSize="large" /> },
     { label: 'משימות פתוחות', value: data.tasks.filter((item) => item.status !== 'COMPLETED' && item.status !== 'DELETED').length, icon: <TaskAlt color="secondary" fontSize="large" /> },
     { label: 'פגישות', value: data.appointments.filter((item) => item.status === 'SCHEDULED').length, icon: <Event color="success" fontSize="large" /> },
-    { label: 'טיימרים פעילים', value: data.timers.filter((item) => item.status === 'RUNNING').length, icon: <AccessTime color="warning" fontSize="large" /> },
+    { label: 'טיימר פעיל', value: data.tasks.some((task) => (task.subtasks || []).some((subtask) => subtask.status === 'RUNNING')) ? '✓' : '✕', icon: <AccessTime color="warning" fontSize="large" /> },
   ]
 
+  const getDateKey = (date) => {
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
+
+  const getAppointmentDate = (item) => {
+    const date = new Date(item.startTime)
+    return Number.isNaN(date.getTime()) ? null : date
+  }
+
+  const today = new Date()
+  const todayKey = getDateKey(today)
+  const tomorrow = new Date(today)
+  tomorrow.setDate(today.getDate() + 1)
+  const tomorrowKey = getDateKey(tomorrow)
+  const weekEnd = new Date(today)
+  weekEnd.setDate(today.getDate() + 7)
+
   const visibleTasks = data.tasks.filter((item) => item.status !== 'COMPLETED' && item.status !== 'DELETED').slice(0, 5)
-  const visibleAppointments = data.appointments.filter((item) => item.status === 'SCHEDULED').slice(0, 5)
+  const activeTimer = data.tasks.flatMap((task) => (task.subtasks || []).map((subtask, subtaskIndex) => ({
+    ...subtask,
+    taskTitle: task.title,
+    taskId: task.id,
+    subtaskIndex
+  }))).find((subtask) => subtask.status === 'RUNNING')
+  const visibleAppointments = data.appointments
+    .filter((item) => item.status === 'SCHEDULED')
+    .filter((item) => {
+      const appointmentDate = getAppointmentDate(item)
+      if (!appointmentDate) return false
+      if (appointmentView === 'today') return getDateKey(appointmentDate) === todayKey
+      if (appointmentView === 'tomorrow') return getDateKey(appointmentDate) === tomorrowKey
+      return appointmentDate >= new Date(today.getFullYear(), today.getMonth(), today.getDate()) && appointmentDate < weekEnd
+    })
+    .sort((first, second) => getAppointmentDate(first) - getAppointmentDate(second))
+    .slice(0, 5)
 
   return (
     <Box>
       <Typography variant="h4" component="h1" gutterBottom fontWeight="bold" color="primary">
-        Dashboard
+        לוח בקרה
       </Typography>
       <Typography color="text.secondary" sx={{ mb: 4 }}>{user.businessName}</Typography>
       {apiStatus === 'loading' && <CircularProgress size={24} />}
@@ -69,6 +116,24 @@ const Dashboard = ({ user }) => {
         ))}
       </Grid>
       {!isLoading && <Grid container spacing={3} sx={{ mt: 1 }}>
+        <Grid item xs={12}>
+          <Paper sx={{ p: 3 }}>
+            <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+              <Typography variant="h6" fontWeight="bold">הטיימר הפעיל</Typography>
+            </Box>
+            {activeTimer ? (
+              <Box sx={{ p: 1.5, bgcolor: 'action.hover', borderRadius: 1 }}>
+                <Typography fontWeight="bold">{activeTimer.title}</Typography>
+                <Typography variant="body2" color="text.secondary">משימה: {activeTimer.taskTitle || 'ללא'}</Typography>
+                <Typography variant="body2" color="text.secondary">משך כולל: {activeTimer.totalDuration || 0} שניות</Typography>
+                <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
+                  <Button variant="outlined" color="warning" startIcon={<Pause />} onClick={() => handleTimerStatus('pause')}>השהיה</Button>
+                  <Button variant="contained" color="error" startIcon={<Stop />} onClick={() => handleTimerStatus('complete')}>סיום</Button>
+                </Stack>
+              </Box>
+            ) : <Typography color="text.secondary">אין טיימר פעיל</Typography>}
+          </Paper>
+        </Grid>
         <Grid item xs={12} md={6}>
           <Paper sx={{ p: 3 }}>
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
@@ -78,8 +143,8 @@ const Dashboard = ({ user }) => {
             <Stack spacing={1}>
               {visibleTasks.length ? visibleTasks.map((item) => (
                 <Box key={item.id} sx={{ p: 1.5, bgcolor: 'action.hover', borderRadius: 1 }}>
-                  <Typography fontWeight="bold">{item.title}</Typography>
-                  <Typography variant="body2" color="text.secondary">{item.priority} | {item.status}</Typography>
+                  <Typography component={Link} to={`/tasks?taskId=${item.id}`} fontWeight="bold" color="primary" sx={{ textDecoration: 'none' }}>{item.title}</Typography>
+                  <Typography variant="body2" color="text.secondary">{{ LOW: 'נמוכה', MEDIUM: 'בינונית', HIGH: 'גבוהה', URGENT: 'דחופה' }[item.priority] || item.priority} | {{ OPEN: 'פתוחה', IN_PROGRESS: 'בתהליך', COMPLETED: 'הושלמה', DELETED: 'נמחקה' }[item.status] || item.status}</Typography>
                 </Box>
               )) : <Typography color="text.secondary">אין משימות פתוחות</Typography>}
             </Stack>
@@ -89,15 +154,20 @@ const Dashboard = ({ user }) => {
           <Paper sx={{ p: 3 }}>
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
               <Typography variant="h6" fontWeight="bold">פגישות קרובות</Typography>
-              <Button component={Link} to="/appointments" size="small">לכל הפגישות</Button>
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', justifyContent: 'flex-start' }}>
+                <Button size="small" variant={appointmentView === 'today' ? 'contained' : 'outlined'} onClick={() => setAppointmentView('today')}>היום</Button>
+                <Button size="small" variant={appointmentView === 'tomorrow' ? 'contained' : 'outlined'} onClick={() => setAppointmentView('tomorrow')}>מחר</Button>
+                <Button size="small" variant={appointmentView === 'week' ? 'contained' : 'outlined'} onClick={() => setAppointmentView('week')}>השבוע הקרוב</Button>
+                <Button component={Link} to="/appointments" size="small">לכל הפגישות</Button>
+              </Box>
             </Box>
             <Stack spacing={1}>
               {visibleAppointments.length ? visibleAppointments.map((item) => (
                 <Box key={item.id} sx={{ p: 1.5, bgcolor: 'action.hover', borderRadius: 1 }}>
-                  <Typography fontWeight="bold">{item.title}</Typography>
+                  <Typography component={Link} to={`/appointments?appointmentId=${item.id}`} fontWeight="bold" color="primary" sx={{ textDecoration: 'none' }}>{item.title}</Typography>
                   <Typography variant="body2" color="text.secondary">{item.startTime}</Typography>
                 </Box>
-              )) : <Typography color="text.secondary">אין פגישות מתוזמנות</Typography>}
+              )) : <Typography color="text.secondary">אין פגישות {appointmentView === 'today' ? 'להיום' : appointmentView === 'tomorrow' ? 'למחר' : 'בשבוע הקרוב'}</Typography>}
             </Stack>
           </Paper>
         </Grid>

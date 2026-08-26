@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
 
 // יבואי MUI
-import { Add, AddTask, Delete, Edit, Search } from "@mui/icons-material"
+import { Add, AddTask, CalendarMonth, Delete, Edit, Search } from "@mui/icons-material"
 import {
   Alert, Box, Button, CircularProgress, Dialog, DialogActions, DialogContent,
   DialogTitle, Fab, IconButton, InputAdornment, MenuItem, Paper, Stack,
@@ -73,11 +73,11 @@ const CustomersList = () => {
 
   return (
     <Box sx={{ position: 'relative' }}>
-      <Typography variant="h4" component="h1" gutterBottom fontWeight="bold" color="primary">Customers</Typography>
+      <Typography variant="h4" component="h1" gutterBottom fontWeight="bold" color="primary">לקוחות</Typography>
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
       <TextField
         fullWidth
-        placeholder="Search customers..."
+        placeholder="חיפוש לקוחות..."
         value={val}
         onChange={(event) => setVal(event.target.value)}
         sx={{ mb: 3, backgroundColor: 'background.paper' }}
@@ -88,10 +88,15 @@ const CustomersList = () => {
           <Paper key={item.id} elevation={1} sx={{ p: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <Box>
               <Typography fontWeight="bold">{item.fullName}</Typography>
-              <Typography variant="body2" color="text.secondary">{item.email || item.phone || 'No contact details'} | {item.status}</Typography>
+              <Typography variant="body2" color="text.secondary">מזהה: {item.id}</Typography>
+              <Typography variant="body2" color="text.secondary">טלפון: {item.phone || 'ללא'} | אימייל: {item.email || 'ללא'}</Typography>
+              <Typography variant="body2" color="text.secondary">סטטוס: {{ LEAD: 'ליד', ACTIVE: 'פעיל', INACTIVE: 'לא פעיל' }[item.status] || item.status} | נמחק: {item.isDeleted ? 'כן' : 'לא'}</Typography>
+              <Typography variant="body2" color="text.secondary">הערות: {item.notes || 'ללא'}</Typography>
+              <Typography variant="caption" color="text.secondary">נוצר: {item.createdAt || 'ללא'} | עודכן: {item.updatedAt || 'ללא'}</Typography>
             </Box>
             <Box>
-              {item.status === 'ACTIVE' && <IconButton color="success" aria-label={`Add task for ${item.fullName}`} onClick={() => navigate(`/tasks?customerId=${item.id}`)}><AddTask /></IconButton>}
+              <IconButton color="success" aria-label={`הוספת משימה עבור ${item.fullName}`} onClick={() => navigate(`/tasks?customerId=${item.id}`)}><AddTask /></IconButton>
+              <IconButton color="primary" aria-label={`הוספת פגישה עבור ${item.fullName}`} onClick={() => navigate(`/appointments?customerId=${item.id}`)}><CalendarMonth /></IconButton>
               <IconButton color="primary" onClick={() => openEdit(item)}><Edit /></IconButton>
               <IconButton color="error" onClick={() => handleDelete(item.id)}><Delete /></IconButton>
             </Box>
@@ -101,17 +106,17 @@ const CustomersList = () => {
       <Fab color="primary" aria-label="add customer" onClick={openAdd} sx={{ position: 'fixed', bottom: 32, right: 32 }}><Add /></Fab>
       <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm">
         <Box component="form" onSubmit={handleSubmit}>
-          <DialogTitle>{editingId ? 'Edit customer' : 'Add customer'}</DialogTitle>
+          <DialogTitle>{editingId ? 'עריכת לקוח' : 'הוספת לקוח'}</DialogTitle>
           <DialogContent sx={{ display: 'grid', gap: 2, pt: 2 }}>
-            <TextField name="fullName" label="Full name" value={customer.fullName} onChange={handleChange} required />
-            <TextField name="phone" label="Phone" value={customer.phone} onChange={handleChange} />
-            <TextField name="email" type="email" label="Email" value={customer.email} onChange={handleChange} />
-            <TextField select name="status" label="Status" value={customer.status} onChange={handleChange}>
-              <MenuItem value="LEAD">Lead</MenuItem><MenuItem value="ACTIVE">Active</MenuItem><MenuItem value="INACTIVE">Inactive</MenuItem>
+            <TextField name="fullName" label="שם מלא" value={customer.fullName} onChange={handleChange} required />
+            <TextField name="phone" label="טלפון" value={customer.phone} onChange={handleChange} />
+            <TextField name="email" type="email" label="אימייל" value={customer.email} onChange={handleChange} />
+            <TextField select name="status" label="סטטוס" value={customer.status} onChange={handleChange}>
+              <MenuItem value="LEAD">ליד</MenuItem><MenuItem value="ACTIVE">פעיל</MenuItem><MenuItem value="INACTIVE">לא פעיל</MenuItem>
             </TextField>
-            <TextField name="notes" label="Notes" multiline rows={3} value={customer.notes} onChange={handleChange} />
+            <TextField name="notes" label="הערות" multiline rows={3} value={customer.notes} onChange={handleChange} />
           </DialogContent>
-          <DialogActions><Button onClick={() => setOpen(false)}>Cancel</Button><Button type="submit" variant="contained">Save</Button></DialogActions>
+          <DialogActions><Button onClick={() => setOpen(false)}>ביטול</Button><Button type="submit" variant="contained">שמירה</Button></DialogActions>
         </Box>
       </Dialog>
     </Box>

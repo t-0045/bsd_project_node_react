@@ -1,11 +1,13 @@
 const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
 const crypto = require('crypto')
+const nodemailer = require('nodemailer')
 const userModel = require('./models/User')
 
 const accessSecret = process.env.ACCESS_TOKEN_SECRET || 'development-access-secret'
 const refreshSecret = process.env.REFRESH_TOKEN_SECRET || 'development-refresh-secret'
 const refreshCookieName = 'refreshToken'
+const verificationTokenLifetime = 60 * 60 * 1000
 
 const publicUser = (user) => {
     const userObject = user.toObject ? user.toObject() : user
@@ -18,6 +20,33 @@ const issueTokens = (user) => {
     const refreshToken = jwt.sign({ id: user.id, tokenId: crypto.randomUUID() }, refreshSecret, { expiresIn: '7d' })
     return { accessToken, refreshToken }
 }
+
+const hashToken = (token) => crypto.createHash('sha256').update(token).digest('hex')
+
+const sendVerificationEmail = async (user, token) => {
+    if (!process.env.SMTP_USER || !process.env.SMTP_PASSWORD) {
+        console.warn('Gmail is not configured. Set SMTP_USER and SMTP_PASSWORD in server/.env')
+        return
+    }
+
+    const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+            user: process.env.SMTP_USER,
+            pass: process.env.SMTP_PASSWORD
+        }
+    })
+
+    await transporter.sendMail({
+        from: process.env.SMTP_FROM || process.env.SMTP_USER,
+        to: user.email,
+        subject: 'קוד אימות לאימייל',
+        text: `קוד האימות שלך הוא: ${token}\n\nהקוד תקף למשך 10 דקות.`,
+        html: `<p>קוד האימות שלך הוא:</p><h1>${token}</h1><p>הקוד תקף למשך 10 דקות.</p>`
+    })
+}
+
+const createVerificationToken = () => String(crypto.randomInt(100000, 1000000))
 
 const register = async ({ email, password, businessName }) => {
     const normalizedEmail = String(email || '').trim().toLowerCase()
@@ -33,18 +62,21 @@ const register = async ({ email, password, businessName }) => {
         throw error
     }
 
+    const verificationToken = createVerificationToken()
     const user = {
         id: crypto.randomUUID(),
         email: normalizedEmail,
         passwordHash: await bcrypt.hash(password, 12),
         businessName: String(businessName).trim(),
         role: 'USER',
+        emailVerified: false,
+        emailVerificationTokenHash: hashToken(verificationToken),
+        emailVerificationExpiresAt: new Date(Date.now() + verificationTokenLifetime),
         refreshTokenHash: null
     }
-    const tokens = issueTokens(user)
-    user.refreshTokenHash = await bcrypt.hash(tokens.refreshToken, 12)
     const createdUser = await userModel.create(user)
-    return { user: publicUser(createdUser), ...tokens }
+    await sendVerificationEmail(createdUser, verificationToken)
+    return { user: publicUser(createdUser) }
 }
 
 const login = async ({ email, password }) => {
@@ -55,11 +87,43 @@ const login = async ({ email, password }) => {
         error.status = 401
         throw error
     }
+    // Email verification is currently optional; keep this block for later enforcement.
+    // if (!user.emailVerified) {
+    //     const error = new Error('Please verify your email before logging in')
+    //     error.status = 403
+    //     throw error
+    // }
 
     const tokens = issueTokens(user)
     const refreshTokenHash = await bcrypt.hash(tokens.refreshToken, 12)
     await userModel.updateOne({ id: user.id }, { $set: { refreshTokenHash } })
     return { user: publicUser({ ...user, refreshTokenHash }), ...tokens }
+}
+
+const verifyEmail = async (email, token) => {
+    const normalizedEmail = String(email || '').trim().toLowerCase()
+    if (!normalizedEmail || !/^\d{6}$/.test(String(token || ''))) {
+        const error = new Error('Verification token is required')
+        error.status = 400
+        throw error
+    }
+
+    const user = await userModel.findOne({
+        email: normalizedEmail,
+        emailVerificationTokenHash: hashToken(token),
+        emailVerificationExpiresAt: { $gt: new Date() }
+    })
+    if (!user) {
+        const error = new Error('Invalid or expired verification token')
+        error.status = 400
+        throw error
+    }
+
+    user.emailVerified = true
+    user.emailVerificationTokenHash = null
+    user.emailVerificationExpiresAt = null
+    await user.save()
+    return publicUser(user)
 }
 
 const refresh = async (refreshToken) => {
@@ -108,6 +172,7 @@ module.exports = {
     refreshCookieName,
     register,
     login,
+    verifyEmail,
     refresh,
     logout,
     setRefreshCookie,

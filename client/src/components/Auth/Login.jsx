@@ -19,7 +19,13 @@ const Login = ({ onLogin }) => {
     setError('')
     setIsSubmitting(true)
     try {
-      const authenticatedUser = isRegister ? await registerUser(form) : await loginUser(form)
+      if (isRegister) {
+        await registerUser(form)
+        setError('החשבון נוצר. בדוק את האימייל שלך ואמת את הכתובת לפני ההתחברות.')
+        setIsRegister(false)
+        return
+      }
+      const authenticatedUser = await loginUser(form)
       onLogin(authenticatedUser)
       navigate('/')
     } catch (requestError) {
@@ -34,9 +40,9 @@ const Login = ({ onLogin }) => {
       <Card elevation={1} sx={{ width: '100%' }}>
         <CardContent sx={{ p: { xs: 3, sm: 5 } }}>
           <Typography variant="h4" component="h1" gutterBottom fontWeight="bold" color="primary">
-            Manager App
+            מנהל העסק
           </Typography>
-          <Typography color="text.secondary" sx={{ mb: 3 }}>Manage your business</Typography>
+          <Typography color="text.secondary" sx={{ mb: 3 }}>ניהול העסק שלך</Typography>
           <Tabs value={isRegister ? 1 : 0} onChange={(_, value) => { setIsRegister(value === 1); setError('') }} sx={{ mb: 3 }}>
             <Tab label="התחברות" />
             <Tab label="הרשמה" />

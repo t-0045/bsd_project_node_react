@@ -40,16 +40,15 @@ const Header = ({ user, onLogout }) => {
       <Container maxWidth="lg">
         <Toolbar disableGutters sx={{ display: 'flex', justifyContent: 'space-between' }}>
           <Typography variant="h6" noWrap sx={{ fontWeight: 700, letterSpacing: '.1rem' }}>
-            Manager App
+            מנהל העסק
           </Typography>
           <Box sx={{ display: 'flex', gap: 1 }}>
             <Typography sx={{ display: { xs: 'none', md: 'block' }, alignSelf: 'center', mr: 1 }}>{user.businessName}</Typography>
-            <Button component={NavLink} to="/" sx={navButtonStyles}>Dashboard</Button>
-            <Button component={NavLink} to="/customers" sx={navButtonStyles}>Customers</Button>
-            <Button component={NavLink} to="/tasks" sx={navButtonStyles}>Tasks</Button>
-            <Button component={NavLink} to="/appointments" sx={navButtonStyles}>Appointments</Button>
-            <Button component={NavLink} to="/timers" sx={navButtonStyles}>Timers</Button>
-            <Button color="inherit" onClick={handleLogout} sx={navButtonStyles}>Logout</Button>
+            <Button component={NavLink} to="/" sx={navButtonStyles}>ראשי</Button>
+            <Button component={NavLink} to="/customers" sx={navButtonStyles}>לקוחות</Button>
+            <Button component={NavLink} to="/tasks" sx={navButtonStyles}>משימות</Button>
+            <Button component={NavLink} to="/appointments" sx={navButtonStyles}>פגישות</Button>
+            <Button color="inherit" onClick={handleLogout} sx={navButtonStyles}>התנתקות</Button>
           </Box>
         </Toolbar>
       </Container>

@@ -8,7 +8,8 @@ const sendTokens = (response, result) => {
 
 const register = async (request, response, next) => {
     try {
-        return sendTokens(response, await auth.register(request.body))
+        const result = await auth.register(request.body)
+        return response.status(201).json(result)
     } catch (error) {
         return next(error)
     }
@@ -46,4 +47,13 @@ const me = async (request, response) => {
     }
 }
 
-module.exports = { register, login, refresh, logout, me }
+const verifyEmail = async (request, response, next) => {
+    try {
+        const user = await auth.verifyEmail(request.body.email, request.body.token)
+        return response.json({ user })
+    } catch (error) {
+        return next(error)
+    }
+}
+
+module.exports = { register, login, refresh, logout, me, verifyEmail }

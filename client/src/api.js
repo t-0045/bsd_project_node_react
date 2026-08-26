@@ -19,7 +19,11 @@ const loginUser = async (credentials) => {
 
 const registerUser = async (details) => {
   const { data } = await api.post('/auth/register', details)
-  localStorage.setItem('accessToken', data.accessToken)
+  return data
+}
+
+const verifyEmail = async (email, token) => {
+  const { data } = await api.post('/auth/verify-email', { email, token })
   return data.user
 }
 
@@ -70,6 +74,11 @@ const updateTask = async (id, task) => {
   return data
 }
 
+const changeSubtaskTimerStatus = async (taskId, subtaskIndex, action) => {
+  const { data } = await api.post(`/tasks/${taskId}/subtasks/${subtaskIndex}/${action}`)
+  return data
+}
+
 const deleteTask = async (id) => api.delete(`/tasks/${id}`)
 
 const getAppointments = async () => {
@@ -89,32 +98,10 @@ const updateAppointment = async (id, appointment) => {
 
 const deleteAppointment = async (id) => api.delete(`/appointments/${id}`)
 
-const getTimers = async () => {
-  const { data } = await api.get('/timers')
-  return data
-}
-
-const createTimer = async (timer) => {
-  const { data } = await api.post('/timers', timer)
-  return data
-}
-
-const updateTimer = async (id, timer) => {
-  const { data } = await api.patch(`/timers/${id}`, timer)
-  return data
-}
-
-const deleteTimer = async (id) => api.delete(`/timers/${id}`)
-const changeTimerStatus = async (id, action) => {
-  const { data } = await api.post(`/timers/${id}/${action}`)
-  return data
-}
-
 export {
-  loginUser, registerUser, getCurrentUser, logoutUser, getHealth,
+  loginUser, registerUser, verifyEmail, getCurrentUser, logoutUser, getHealth,
   getCustomers, createCustomer, updateCustomer, deleteCustomer,
-  getTasks, createTask, updateTask, deleteTask,
+  getTasks, createTask, updateTask, deleteTask, changeSubtaskTimerStatus,
   getAppointments, createAppointment, updateAppointment, deleteAppointment,
-  getTimers, createTimer, updateTimer, deleteTimer, changeTimerStatus
 }
 export default api

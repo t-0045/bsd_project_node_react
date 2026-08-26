@@ -10,7 +10,6 @@ const authRoutes = require('./routes/auth')
 const customerRoutes = require('./routes/customers')
 const appointmentRoutes = require('./routes/appointments')
 const taskRoutes = require('./routes/tasks')
-const timerRoutes = require('./routes/timers')
 
 const app = express()
 const port = process.env.PORT || 3001
@@ -24,7 +23,6 @@ app.use('/api/auth', authRoutes)
 app.use('/api/customers', requireAuth, customerRoutes)
 app.use('/api/appointments', requireAuth, appointmentRoutes)
 app.use('/api/tasks', requireAuth, taskRoutes)
-app.use('/api/timers', requireAuth, timerRoutes)
 
 app.use((error, request, response, next) => response.status(error.status || 500).json({ error: error.message || 'Internal server error' }))
 
@@ -33,6 +31,16 @@ if (require.main === module) {
         try {
             const uri = process.env.DATABASE_URI || 'mongodb://localhost:27017/bsd_project'
             await mongoose.connect(uri)
+            const migration = await mongoose.connection.db.collection('_migrations').findOne({ name: 'unify-subtasks-and-timers' })
+            if (!migration) {
+                await mongoose.connection.db.collection('timers').deleteMany({})
+                await mongoose.connection.db.collection('tasks').updateMany({}, { $set: { subtasks: [] } })
+                await mongoose.connection.db.collection('_migrations').insertOne({
+                    name: 'unify-subtasks-and-timers',
+                    completedAt: new Date()
+                })
+                console.log('Legacy timers and subtasks reset')
+            }
             console.log(`MongoDB connected to ${uri}`)
             app.listen(port, () => console.log(`API listening on http://localhost:${port}`))
         } catch (error) {
