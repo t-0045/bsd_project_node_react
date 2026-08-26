@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 import { useSearchParams } from "react-router-dom"
 
 // יבואי MUI
-import { Add, ChevronLeft, ChevronRight, Delete, Edit, Search } from "@mui/icons-material"
+import { Add, ChevronLeft, ChevronRight, Clear, Delete, Edit, ExpandLess, ExpandMore, Search } from "@mui/icons-material"
 import { Alert, Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, Fab, IconButton, InputAdornment, MenuItem, Paper, Stack, Tab, Tabs, TextField, Typography } from "@mui/material"
 import { createAppointment, deleteAppointment, getAppointments, getCustomers, updateAppointment } from "../../api"
 
@@ -14,18 +14,20 @@ const localDateTime = (date) => `${dateKey(date)}T${pad(date.getHours())}:${pad(
 const startOfWeek = (date) => { const result = new Date(date); result.setHours(0, 0, 0, 0); result.setDate(result.getDate() - result.getDay()); return result }
 const sameDay = (first, second) => dateKey(first) === dateKey(second)
 const appointmentDate = (item, field = 'startTime') => { const date = new Date(item[field]); return Number.isNaN(date.getTime()) ? null : date }
+const initialFilters = { text: '', customerId: '', status: '', fromDate: '', toDate: '', fromHour: '', toHour: '' }
 
 const AppointmentsList = () => {
   const [appointments, setAppointments] = useState([])
   const [customers, setCustomers] = useState([])
   const [appointment, setAppointment] = useState(emptyAppointment)
-  const [val, setVal] = useState("")
+  const [filters, setFilters] = useState(initialFilters)
   const [editingId, setEditingId] = useState(null)
   const [open, setOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
   const [calendarView, setCalendarView] = useState('week')
   const [calendarDate, setCalendarDate] = useState(new Date())
+  const [isAdvancedSearchOpen, setIsAdvancedSearchOpen] = useState(false)
   const [dayStartHour, setDayStartHour] = useState(0)
   const [dayEndHour, setDayEndHour] = useState(24)
   const [searchParams, setSearchParams] = useSearchParams()
@@ -72,6 +74,21 @@ const AppointmentsList = () => {
   }
   const handleDelete = async (id) => { if (window.confirm('Delete this appointment?')) { await deleteAppointment(id); fetchAppointments() } }
   const customerName = (id) => customers.find((item) => item.id === id)?.fullName || id
+  const filteredAppointments = appointments.filter((item) => {
+    const text = filters.text.trim().toLowerCase()
+    const searchableText = `${item.title} ${item.customerId} ${customerName(item.customerId)} ${item.location} ${item.status}`.toLowerCase()
+    const start = appointmentDate(item)
+    if (text && !searchableText.includes(text)) return false
+    if (filters.customerId && item.customerId !== filters.customerId) return false
+    if (filters.status && item.status !== filters.status) return false
+    if (filters.fromDate && (!start || dateKey(start) < filters.fromDate)) return false
+    if (filters.toDate && (!start || dateKey(start) > filters.toDate)) return false
+    if (filters.fromHour && (!start || start.getHours() < Number(filters.fromHour))) return false
+    if (filters.toHour && (!start || start.getHours() >= Number(filters.toHour))) return false
+    return true
+  })
+  const updateFilter = (name, value) => setFilters((current) => ({ ...current, [name]: value }))
+  const clearFilters = () => setFilters(initialFilters)
 
   const openNewAt = (date) => {
     const end = new Date(date.getTime() + 60 * 60 * 1000)
@@ -107,9 +124,10 @@ const AppointmentsList = () => {
       ? `${calendarDays[0].toLocaleDateString('he-IL', { day: 'numeric', month: 'short' })} - ${calendarDays[6].toLocaleDateString('he-IL', { day: 'numeric', month: 'short', year: 'numeric' })}`
       : calendarDate.toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
 
-  const visibleForDay = (date) => appointments.filter((item) => {
+  const visibleForDay = (date) => filteredAppointments.filter((item) => {
     const start = appointmentDate(item)
     if (!start || !sameDay(start, date)) return false
+    if (calendarView !== 'day' && calendarView !== 'week') return true
     const end = appointmentDate(item, 'endTime') || new Date(start.getTime() + 60 * 60 * 1000)
     return start.getHours() * 60 + start.getMinutes() < dayEndHour * 60 && end.getHours() * 60 + end.getMinutes() > dayStartHour * 60
   })
@@ -147,8 +165,8 @@ const AppointmentsList = () => {
     const days = isDay ? calendarDays : calendarDays
     const step = isDay ? 15 : 60
     const unit = isDay ? 0.25 : 1
-    const firstMinute = isDay || calendarView === 'week' ? dayStartHour * 60 : 0
-    const lastMinute = isDay || calendarView === 'week' ? dayEndHour * 60 : 24 * 60
+    const firstMinute = calendarView === 'day' || calendarView === 'week' ? dayStartHour * 60 : 0
+    const lastMinute = calendarView === 'day' || calendarView === 'week' ? dayEndHour * 60 : 24 * 60
     const slots = Array.from({ length: (lastMinute - firstMinute) / step }, (_, index) => firstMinute + index * step)
     const gridHeight = (lastMinute - firstMinute) * unit
     return <Box sx={{ display: 'grid', gridTemplateColumns: `64px repeat(${days.length}, minmax(${isDay ? 180 : 120}px, 1fr))`, minWidth: isDay ? 244 : 900, overflow: 'auto' }}>
@@ -172,6 +190,25 @@ const AppointmentsList = () => {
     <Box sx={{ position: 'relative' }}>
       <Typography variant="h4" component="h1" gutterBottom fontWeight="bold" color="primary">פגישות</Typography>
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      <Paper sx={{ p: 2, mb: 3 }}>
+        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+          <Button startIcon={isAdvancedSearchOpen ? <ExpandLess /> : <ExpandMore />} onClick={() => setIsAdvancedSearchOpen((openState) => !openState)}>{isAdvancedSearchOpen ? 'סגירת חיפוש מתקדם' : 'חיפוש מתקדם'}</Button>
+          <Typography variant="h6">חיפוש וסינון פגישות</Typography>
+        </Stack>
+        <TextField fullWidth label="חיפוש בכל השדות" placeholder="כותרת, לקוח, מיקום..." value={filters.text} onChange={(event) => updateFilter('text', event.target.value)} InputProps={{ startAdornment: <InputAdornment position="start"><Search color="action" /></InputAdornment> }} />
+        {isAdvancedSearchOpen && <>
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(4, 1fr)' }, gap: 2, mt: 2 }}>
+            <TextField select label="לקוח" value={filters.customerId} onChange={(event) => updateFilter('customerId', event.target.value)}><MenuItem value="">כל הלקוחות</MenuItem>{customers.map((item) => <MenuItem key={item.id} value={item.id}>{item.fullName}</MenuItem>)}</TextField>
+            <TextField select label="סטטוס" value={filters.status} onChange={(event) => updateFilter('status', event.target.value)}><MenuItem value="">כל הסטטוסים</MenuItem><MenuItem value="SCHEDULED">מתוכננת</MenuItem><MenuItem value="COMPLETED">הושלמה</MenuItem><MenuItem value="CANCELLED">בוטלה</MenuItem></TextField>
+            <TextField label="מתאריך" type="date" value={filters.fromDate} onChange={(event) => updateFilter('fromDate', event.target.value)} InputLabelProps={{ shrink: true }} />
+            <TextField label="עד תאריך" type="date" value={filters.toDate} onChange={(event) => updateFilter('toDate', event.target.value)} InputLabelProps={{ shrink: true }} />
+            <TextField select label="משעה" value={filters.fromHour} onChange={(event) => updateFilter('fromHour', event.target.value)}><MenuItem value="">כל השעות</MenuItem>{Array.from({ length: 24 }, (_, hour) => <MenuItem key={hour} value={hour}>{`${pad(hour)}:00`}</MenuItem>)}</TextField>
+            <TextField select label="עד שעה" value={filters.toHour} onChange={(event) => updateFilter('toHour', event.target.value)}><MenuItem value="">כל השעות</MenuItem>{Array.from({ length: 24 }, (_, hour) => <MenuItem key={hour} value={hour}>{`${pad(hour)}:00`}</MenuItem>)}</TextField>
+            <Button startIcon={<Clear />} onClick={clearFilters} disabled={!Object.values(filters).some(Boolean)}>ניקוי מסננים</Button>
+          </Box>
+        </>}
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>נמצאו {filteredAppointments.length} פגישות</Typography>
+      </Paper>
       <Paper sx={{ p: 2, mb: 3, overflow: 'auto' }}>
         <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2, minWidth: 500 }}>
           <Stack direction="row" alignItems="center"><IconButton onClick={() => moveCalendar(-1)} aria-label="הקודם"><ChevronRight /></IconButton><IconButton onClick={() => moveCalendar(1)} aria-label="הבא"><ChevronLeft /></IconButton><Button onClick={() => setCalendarDate(new Date())}>היום</Button></Stack>
@@ -188,9 +225,8 @@ const AppointmentsList = () => {
         </Stack>}
         {calendarView === 'month' ? renderMonth() : renderTimeGrid()}
       </Paper>
-      <TextField fullWidth placeholder="חיפוש פגישות..." value={val} onChange={(event) => setVal(event.target.value)} sx={{ mb: 3, backgroundColor: 'background.paper' }} InputProps={{ startAdornment: <InputAdornment position="start"><Search color="action" /></InputAdornment> }} />
       <Stack spacing={2} sx={{ mb: 4 }}>
-        {appointments.filter((item) => item.title.toLowerCase().includes(val.toLowerCase())).map((item) => (
+        {filteredAppointments.map((item) => (
           <Paper key={item.id} elevation={1} sx={{ p: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <Box><Typography fontWeight="bold">{item.title}</Typography><Typography variant="body2" color="text.secondary">מזהה: {item.id} | לקוח: {item.customerId} ({customerName(item.customerId)})</Typography><Typography variant="body2" color="text.secondary">התחלה: {item.startTime} | סיום: {item.endTime}</Typography><Typography variant="body2" color="text.secondary">מיקום: {item.location || 'ללא'} | סטטוס: {{ SCHEDULED: 'מתוכננת', COMPLETED: 'הושלמה', CANCELLED: 'בוטלה' }[item.status] || item.status}</Typography><Typography variant="caption" color="text.secondary">נוצרה: {item.createdAt || 'ללא'} | עודכנה: {item.updatedAt || 'ללא'}</Typography></Box>
             <Box><IconButton color="primary" onClick={() => openEdit(item)}><Edit /></IconButton><IconButton color="error" onClick={() => handleDelete(item.id)}><Delete /></IconButton></Box>

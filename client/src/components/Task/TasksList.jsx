@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 import { useSearchParams } from "react-router-dom"
 
 // יבואי MUI
-import { Add, Delete, Edit, Pause, PlayArrow, Stop, Search } from "@mui/icons-material"
+import { Add, Clear, Delete, Edit, ExpandLess, ExpandMore, Pause, PlayArrow, Stop, Search } from "@mui/icons-material"
 import {
   Alert, Box, Button, Checkbox, CircularProgress, Dialog, DialogActions,
   DialogContent, DialogTitle, Fab, IconButton, InputAdornment, MenuItem, Paper,
@@ -10,12 +10,24 @@ import {
 } from "@mui/material"
 import { changeSubtaskTimerStatus, createTask, deleteTask, getCustomers, getTasks, updateTask } from "../../api"
 
-const emptyTask = { customerId: '', title: '', priority: 'MEDIUM', status: 'OPEN', startDate: '', dueDate: '', notes: '', subtasks: [] }
+const emptyTask = { customerId: '', title: '', priority: 'MEDIUM', status: 'OPEN', dueDate: '', notes: '', subtasks: [] }
+const initialFilters = { text: '', customerId: '', priority: '', status: '', fromDate: '', toDate: '' }
+const localDateTime = (date) => {
+  const pad = (value) => String(value).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+const nextMinute = () => {
+  const date = new Date()
+  date.setSeconds(0, 0)
+  date.setMinutes(date.getMinutes() + 1)
+  return date
+}
 
 const TasksList = () => {
   const [tasks, setTasks] = useState([])
   const [customers, setCustomers] = useState([])
-  const [val, setVal] = useState("")
+  const [filters, setFilters] = useState(initialFilters)
+  const [isAdvancedSearchOpen, setIsAdvancedSearchOpen] = useState(false)
   const [task, setTask] = useState(emptyTask)
   const [editingId, setEditingId] = useState(null)
   const [open, setOpen] = useState(false)
@@ -31,6 +43,19 @@ const TasksList = () => {
   const customerIdFromUrl = searchParams.get('customerId') || ''
   const taskIdFromUrl = searchParams.get('taskId') || ''
   const availableCustomers = customers.filter((item) => !item.isDeleted)
+  const customerName = (id) => customers.find((customer) => customer.id === id)?.fullName || ''
+  const filteredTasks = tasks.filter((item) => {
+    const text = filters.text.trim().toLowerCase()
+    const searchableText = `${item.title} ${item.notes || ''} ${item.customerId || ''} ${customerName(item.customerId)}`.toLowerCase()
+    if (text && !searchableText.includes(text)) return false
+    if (filters.customerId && item.customerId !== filters.customerId) return false
+    if (filters.priority && item.priority !== filters.priority) return false
+    if (filters.status && item.status !== filters.status) return false
+    if (filters.toDate && (!item.dueDate || item.dueDate.slice(0, 10) > filters.toDate)) return false
+    return true
+  })
+  const updateFilter = (name, value) => setFilters((current) => ({ ...current, [name]: value }))
+  const clearFilters = () => setFilters(initialFilters)
 
   const fetchTasks = async () => {
     try { setTasks(await getTasks()) }
@@ -88,15 +113,15 @@ const TasksList = () => {
   const openAddSubtask = (selectedTaskItem) => {
     setSelectedTask(selectedTaskItem)
     setSubtaskTitle('')
-    setSubtaskStartDate('')
-    setSubtaskDueDate('')
+    setSubtaskStartDate(localDateTime(nextMinute()))
+    setSubtaskDueDate(selectedTaskItem.dueDate || '')
     setSubtaskDialogOpen(true)
   }
 
   const handleAddSubtask = async (event) => {
     event.preventDefault()
     const title = subtaskTitle.trim()
-    if (!title || !subtaskStartDate || !selectedTask) return
+    if (!title || !subtaskStartDate || !subtaskDueDate || !selectedTask) return
     try {
       await updateTask(selectedTask.id, {
         subtasks: [...(selectedTask.subtasks || []), {
@@ -146,15 +171,30 @@ const TasksList = () => {
     <Box sx={{ position: 'relative' }}>
       <Typography variant="h4" component="h1" gutterBottom fontWeight="bold" color="primary">משימות</Typography>
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-      <TextField fullWidth placeholder="חיפוש משימות..." value={val} onChange={(event) => setVal(event.target.value)} sx={{ mb: 3, backgroundColor: 'background.paper' }} InputProps={{ startAdornment: <InputAdornment position="start"><Search color="action" /></InputAdornment> }} />
+      <Paper sx={{ p: 2, mb: 3 }}>
+        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+          <Button startIcon={isAdvancedSearchOpen ? <ExpandLess /> : <ExpandMore />} onClick={() => setIsAdvancedSearchOpen((openState) => !openState)}>{isAdvancedSearchOpen ? 'סגירת חיפוש מתקדם' : 'חיפוש מתקדם'}</Button>
+          <Typography variant="h6">חיפוש וסינון משימות</Typography>
+        </Stack>
+        <TextField fullWidth label="חיפוש בכל השדות" placeholder="כותרת, לקוח, הערות..." value={filters.text} onChange={(event) => updateFilter('text', event.target.value)} InputProps={{ startAdornment: <InputAdornment position="start"><Search color="action" /></InputAdornment> }} />
+        {isAdvancedSearchOpen && <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(4, 1fr)' }, gap: 2, mt: 2 }}>
+          <TextField select label="לקוח" value={filters.customerId} onChange={(event) => updateFilter('customerId', event.target.value)}><MenuItem value="">כל הלקוחות</MenuItem>{availableCustomers.map((item) => <MenuItem key={item.id} value={item.id}>{item.fullName}</MenuItem>)}</TextField>
+          <TextField select label="עדיפות" value={filters.priority} onChange={(event) => updateFilter('priority', event.target.value)}><MenuItem value="">כל העדיפויות</MenuItem><MenuItem value="LOW">נמוכה</MenuItem><MenuItem value="MEDIUM">בינונית</MenuItem><MenuItem value="HIGH">גבוהה</MenuItem><MenuItem value="URGENT">דחופה</MenuItem></TextField>
+          <TextField select label="סטטוס" value={filters.status} onChange={(event) => updateFilter('status', event.target.value)}><MenuItem value="">כל הסטטוסים</MenuItem><MenuItem value="OPEN">פתוחה</MenuItem><MenuItem value="IN_PROGRESS">בתהליך</MenuItem><MenuItem value="COMPLETED">הושלמה</MenuItem><MenuItem value="DELETED">נמחקה</MenuItem></TextField>
+          <TextField label="מתאריך" type="date" value={filters.fromDate} onChange={(event) => updateFilter('fromDate', event.target.value)} InputLabelProps={{ shrink: true }} />
+          <TextField label="עד תאריך" type="date" value={filters.toDate} onChange={(event) => updateFilter('toDate', event.target.value)} InputLabelProps={{ shrink: true }} />
+          <Button startIcon={<Clear />} onClick={clearFilters} disabled={!Object.values(filters).some(Boolean)}>ניקוי מסננים</Button>
+        </Box>}
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>נמצאו {filteredTasks.length} משימות</Typography>
+      </Paper>
       <Stack spacing={2} sx={{ mb: 4 }}>
-        {tasks.filter((item) => item.title.toLowerCase().includes(val.toLowerCase())).map((item) => (
+        {filteredTasks.map((item) => (
           <Paper key={item.id} elevation={1} sx={{ p: 2, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 2 }}>
             <Box sx={{ flex: 1 }}>
               <Typography fontWeight="bold">{item.title}</Typography>
               <Typography variant="body2" color="text.secondary">מזהה: {item.id} | לקוח: {customers.find((customer) => customer.id === item.customerId)?.fullName || 'ללא'}</Typography>
               <Typography variant="body2" color="text.secondary">עדיפות: {{ LOW: 'נמוכה', MEDIUM: 'בינונית', HIGH: 'גבוהה', URGENT: 'דחופה' }[item.priority] || item.priority} | סטטוס: {{ OPEN: 'פתוחה', IN_PROGRESS: 'בתהליך', COMPLETED: 'הושלמה', DELETED: 'נמחקה' }[item.status] || item.status}</Typography>
-              <Typography variant="body2" color="text.secondary">טווח: {item.startDate || 'ללא'} עד {item.dueDate || 'ללא'} | נמחקה: {item.isDeleted ? 'כן' : 'לא'}</Typography>
+              <Typography variant="body2" color="text.secondary">תאריך יעד: {item.dueDate || 'ללא'} | נמחקה: {item.isDeleted ? 'כן' : 'לא'}</Typography>
               <Typography variant="body2" color="text.secondary">הערות: {item.notes || 'ללא'}</Typography>
               <Stack spacing={0.25} sx={{ mt: 1 }}>
                 {(item.subtasks || []).map((subtask, subtaskIndex) => (
@@ -191,7 +231,6 @@ const TasksList = () => {
             <TextField name="title" label="כותרת" value={task.title} onChange={handleChange} required />
             <TextField select name="priority" label="עדיפות" value={task.priority} onChange={handleChange}><MenuItem value="LOW">נמוכה</MenuItem><MenuItem value="MEDIUM">בינונית</MenuItem><MenuItem value="HIGH">גבוהה</MenuItem><MenuItem value="URGENT">דחופה</MenuItem></TextField>
             <TextField select name="status" label="סטטוס" value={task.status} onChange={handleChange}><MenuItem value="OPEN">פתוחה</MenuItem><MenuItem value="IN_PROGRESS">בתהליך</MenuItem><MenuItem value="COMPLETED">הושלמה</MenuItem><MenuItem value="DELETED">נמחקה</MenuItem></TextField>
-            <TextField name="startDate" type="datetime-local" label="תאריך התחלה" value={task.startDate || ''} onChange={handleChange} InputLabelProps={{ shrink: true }} required />
             <TextField name="dueDate" type="datetime-local" label="תאריך יעד" value={task.dueDate || ''} onChange={handleChange} InputLabelProps={{ shrink: true }} required />
             <TextField name="notes" label="הערות" value={task.notes || ''} onChange={handleChange} multiline rows={3} />
           </DialogContent>
@@ -203,8 +242,8 @@ const TasksList = () => {
           <DialogTitle>הוספת משימת משנה</DialogTitle>
           <DialogContent sx={{ pt: 2 }}>
             <TextField autoFocus fullWidth name="subtaskTitle" label="כותרת" value={subtaskTitle} onChange={(event) => setSubtaskTitle(event.target.value)} required />
-            <TextField fullWidth name="subtaskStartDate" type="datetime-local" label="תאריך התחלה" value={subtaskStartDate} onChange={(event) => setSubtaskStartDate(event.target.value)} InputLabelProps={{ shrink: true }} required sx={{ mt: 2 }} />
-            <TextField fullWidth name="subtaskDueDate" type="datetime-local" label="תאריך סיום" value={subtaskDueDate} onChange={(event) => setSubtaskDueDate(event.target.value)} inputProps={{ min: subtaskStartDate || undefined, max: selectedTask?.dueDate || undefined }} InputLabelProps={{ shrink: true }} sx={{ mt: 2 }} />
+            <TextField fullWidth name="subtaskStartDate" type="datetime-local" label="תאריך התחלה" value={subtaskStartDate} onChange={(event) => setSubtaskStartDate(event.target.value)} inputProps={{ min: localDateTime(nextMinute()), max: selectedTask?.dueDate || undefined }} InputLabelProps={{ shrink: true }} required sx={{ mt: 2 }} />
+            <TextField fullWidth name="subtaskDueDate" type="datetime-local" label="תאריך סיום" value={subtaskDueDate} onChange={(event) => setSubtaskDueDate(event.target.value)} inputProps={{ min: subtaskStartDate || localDateTime(nextMinute()), max: selectedTask?.dueDate || undefined }} InputLabelProps={{ shrink: true }} required sx={{ mt: 2 }} />
           </DialogContent>
           <DialogActions><Button onClick={() => setSubtaskDialogOpen(false)}>ביטול</Button><Button type="submit" variant="contained">הוספה</Button></DialogActions>
         </Box>

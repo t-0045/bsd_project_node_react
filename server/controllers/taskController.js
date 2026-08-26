@@ -7,20 +7,18 @@ const validateTaskDates = async (request, response, next) => {
         const existingTask = request.method === 'PATCH'
             ? await taskModel.findOne({ id: request.params.id, userId: request.user.id }).lean()
             : null
-        const taskStart = request.body.startDate || existingTask?.startDate
         const taskDue = request.body.dueDate || existingTask?.dueDate
-        const start = Date.parse(taskStart)
         const due = Date.parse(taskDue)
 
-        if (!Number.isFinite(start) || !Number.isFinite(due) || start < Date.now() || due <= start) {
-            return response.status(400).json({ error: 'Task dates must be valid and the due date must be after the start date' })
+        if (!Number.isFinite(due)) {
+            return response.status(400).json({ error: 'The due date must be valid' })
         }
 
         const subtasks = Array.isArray(request.body.subtasks) ? request.body.subtasks : existingTask?.subtasks || []
         const invalidSubtask = subtasks.find((subtask) => {
             const subtaskStart = Date.parse(subtask.startDate)
             const subtaskDue = subtask.dueDate ? Date.parse(subtask.dueDate) : null
-            return !Number.isFinite(subtaskStart) || subtaskStart < Date.now() || subtaskStart < start || subtaskStart > due ||
+            return !Number.isFinite(subtaskStart) || subtaskStart < Date.now() || subtaskStart > due ||
                 (subtaskDue !== null && (!Number.isFinite(subtaskDue) || subtaskDue <= subtaskStart || subtaskDue < Date.now() || subtaskDue > due))
         })
         if (invalidSubtask) return response.status(400).json({ error: 'Subtask dates must be within the task date range' })
@@ -37,7 +35,6 @@ const createTask = resourceController.create(taskModel, (body, userId) => ({
     customerId: body.customerId || null,
     title: body.title,
     priority: body.priority,
-    startDate: body.startDate,
     dueDate: body.dueDate,
     notes: body.notes || '',
     status: body.status,
