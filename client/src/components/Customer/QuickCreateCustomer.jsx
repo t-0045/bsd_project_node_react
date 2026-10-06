@@ -1,12 +1,14 @@
 import { useState } from 'react'
-import { Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Stack, TextField, Typography } from '@mui/material'
+import { Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Stack, TextField, Typography } from '../Shared/PrimeUI'
 import { createCustomer } from '../../api'
 
 const emptyCustomer = { fullName: '', phone: '', email: '', status: 'LEAD', notes: '' }
 
-export const QuickCreateCustomerOption = ({ onClick }) => <MenuItem value="__create_customer__" onClick={onClick}>יצירת לקוח חדש</MenuItem>
+export const QuickCreateCustomerOption = () => <MenuItem value="__create_customer__">יצירת לקוח חדש</MenuItem>
 
-const QuickCreateCustomer = ({ open, onClose, onCreated }) => {
+const QuickCreateCustomer = ({ open, onClose, onCreated, picklists, user }) => {
+  const customerStatuses = picklists?.customerStatus || []
+  const customerRequired = user?.requiredFields?.customer ?? ['fullName']
   const [customer, setCustomer] = useState(emptyCustomer)
   const [error, setError] = useState('')
   const [isSaving, setIsSaving] = useState(false)
@@ -63,13 +65,13 @@ const QuickCreateCustomer = ({ open, onClose, onCreated }) => {
         <DialogTitle>יצירת לקוח חדש</DialogTitle>
         <DialogContent sx={{ display: 'grid', gap: 2, pt: 2 }}>
           {error && <Alert severity="error">{error}</Alert>}
-          <TextField autoFocus name="fullName" label="שם מלא" value={customer.fullName} onChange={({ target }) => setCustomer({ ...customer, fullName: target.value })} required />
-          <TextField name="phone" label="טלפון" value={customer.phone} onChange={({ target }) => setCustomer({ ...customer, phone: target.value })} />
-          <TextField name="email" type="email" label="אימייל" value={customer.email} onChange={({ target }) => setCustomer({ ...customer, email: target.value })} />
+          <TextField autoFocus name="fullName" label="שם מלא" value={customer.fullName} onChange={({ target }) => setCustomer({ ...customer, fullName: target.value })} required={customerRequired.includes('fullName')} />
+          <TextField name="phone" label="טלפון" value={customer.phone} onChange={({ target }) => setCustomer({ ...customer, phone: target.value })} required={customerRequired.includes('phone')} />
+          <TextField name="email" type="email" label="אימייל" value={customer.email} onChange={({ target }) => setCustomer({ ...customer, email: target.value })} required={customerRequired.includes('email')} />
           <TextField select name="status" label="סטטוס" value={customer.status} onChange={({ target }) => setCustomer({ ...customer, status: target.value })}>
-            <MenuItem value="LEAD">ליד</MenuItem><MenuItem value="ACTIVE">פעיל</MenuItem><MenuItem value="INACTIVE">לא פעיל</MenuItem>
+            {customerStatuses.map((option) => <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>)}
           </TextField>
-          <TextField name="notes" label="הערות" value={customer.notes} onChange={({ target }) => setCustomer({ ...customer, notes: target.value })} multiline rows={2} />
+          <TextField name="notes" label="הערות" value={customer.notes} onChange={({ target }) => setCustomer({ ...customer, notes: target.value })} multiline rows={2} required={customerRequired.includes('notes')} />
         </DialogContent>
         <DialogActions><Button onClick={close} disabled={isSaving}>ביטול</Button><Button type="submit" variant="contained" disabled={isSaving}>יצירת לקוח</Button></DialogActions>
       </Box>

@@ -16,8 +16,17 @@ const publicUser = (user) => {
 }
 
 const issueTokens = (user) => {
-    const accessToken = jwt.sign({ id: user.id, role: user.role }, accessSecret, { expiresIn: '15m' })
-    const refreshToken = jwt.sign({ id: user.id, tokenId: crypto.randomUUID() }, refreshSecret, { expiresIn: '7d' })
+    const accessTokenDurationMinutes = user.accessTokenDurationMinutes || 15
+    const accessToken = jwt.sign(
+        { id: user.id, role: user.role },
+        accessSecret,
+        { expiresIn: `${accessTokenDurationMinutes}m` }
+    )
+    const refreshToken = jwt.sign(
+        { id: user.id, tokenId: crypto.randomUUID() },
+        refreshSecret,
+        { expiresIn: '7d' }
+    )
     return { accessToken, refreshToken }
 }
 
@@ -182,11 +191,13 @@ const changePassword = async (userId, currentPassword, newPassword) => {
 }
 
 const setRefreshCookie = (response, token) => {
+    const tokenPayload = jwt.decode(token)
+    const maxAge = Math.max(0, tokenPayload.exp * 1000 - Date.now())
     response.cookie(refreshCookieName, token, {
         httpOnly: true,
         sameSite: 'strict',
         secure: process.env.NODE_ENV === 'production',
-        maxAge: 7 * 24 * 60 * 60 * 1000
+        maxAge
     })
 }
 

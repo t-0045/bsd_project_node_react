@@ -12,11 +12,11 @@ const AppointmentSchema = new mongoose.Schema({
     },
     customerId: {
         type: String,
-        required: true
+        default: null
     },
     title: {
         type: String,
-        required: true,
+        default: '',
         trim: true
     },
     startTime: {
@@ -33,8 +33,7 @@ const AppointmentSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        required: true,
-        enum: ['SCHEDULED', 'COMPLETED', 'CANCELLED']
+        required: true
     }
 }, {
     timestamps: true

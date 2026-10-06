@@ -21,6 +21,23 @@ const UserSchema = new mongoose.Schema({
         type: [{ type: String, trim: true }],
         default: []
     },
+    accessTokenDurationMinutes: {
+        type: Number,
+        enum: [5, 15, 30, 60, 120],
+        default: 15
+    },
+    calendarStartHour: {
+        type: Number,
+        min: 0,
+        max: 23,
+        default: 0
+    },
+    calendarEndHour: {
+        type: Number,
+        min: 1,
+        max: 24,
+        default: 24
+    },
     includeSubtaskTimers: {
         type: Boolean,
         default: true
@@ -33,6 +50,14 @@ const UserSchema = new mongoose.Schema({
         type: String,
         enum: ['WARN', 'BLOCK'],
         default: 'WARN'
+    },
+    picklists: {
+        type: mongoose.Schema.Types.Mixed,
+        default: {}
+    },
+    requiredFields: {
+        type: mongoose.Schema.Types.Mixed,
+        default: {}
     },
     passwordHash: {
         type: String,

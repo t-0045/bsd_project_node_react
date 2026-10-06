@@ -1,12 +1,11 @@
 import { useRef, useState } from 'react'
-import { AccountCircle, Add, CloudUpload, DeleteOutline, ExpandMore, Lock, Save } from '@mui/icons-material'
-import { Accordion, AccordionDetails, AccordionSummary, Alert, Avatar, Box, Button, Checkbox, CircularProgress, FormControl, FormControlLabel, FormGroup, FormLabel, Radio, RadioGroup, Stack, Switch, TextField, Typography } from '@mui/material'
-import { changePassword, updatePersonalDetails, updateProfileImage, updateSystemSettings } from '../../api'
+import { AccountCircle, Add, CloudUpload, DeleteOutline, ExpandMore, Lock, Save, Accordion, AccordionDetails, AccordionSummary, Alert, Avatar, Box, Button, Checkbox, CircularProgress, FormControl, FormControlLabel, FormGroup, FormLabel, MenuItem, Radio, RadioGroup, Stack, Switch, TextField, Typography } from './PrimeUI'
+import { changePassword, updatePersonalDetails, updatePicklists, updateProfileImage, updateSystemSettings } from '../../api'
 
 const MAX_IMAGE_SIZE = 2 * 1024 * 1024
 const ALLOWED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp']
 
-const SettingsPage = ({ user, onUserUpdate }) => {
+const SettingsPage = ({ user, onUserUpdate, picklists, onPicklistsUpdate }) => {
   const fileInputRef = useRef(null)
   const [imagePreview, setImagePreview] = useState(user?.profileImage || '')
   const [error, setError] = useState('')
@@ -21,15 +20,73 @@ const SettingsPage = ({ user, onUserUpdate }) => {
   const [businessName, setBusinessName] = useState(user?.businessName || '')
   const [backupEmails, setBackupEmails] = useState(user?.backupEmails || [])
   const [phoneNumbers, setPhoneNumbers] = useState(user?.phoneNumbers || [])
+  const [accessTokenDurationMinutes, setAccessTokenDurationMinutes] = useState(user?.accessTokenDurationMinutes || 15)
   const [includeSubtaskTimers, setIncludeSubtaskTimers] = useState(user?.includeSubtaskTimers !== false)
+  const [calendarStartHour, setCalendarStartHour] = useState(user?.calendarStartHour ?? 0)
+  const [calendarEndHour, setCalendarEndHour] = useState(user?.calendarEndHour ?? 24)
   const [duplicateCustomerFields, setDuplicateCustomerFields] = useState(user?.duplicateCustomerFields || ['phone', 'email'])
   const [duplicateCustomerMode, setDuplicateCustomerMode] = useState(user?.duplicateCustomerMode || 'WARN')
+  const [requiredFields, setRequiredFields] = useState(user?.requiredFields || {
+    customer: ['fullName'],
+    task: ['title'],
+    appointment: ['customerId', 'title']
+  })
   const [detailsError, setDetailsError] = useState('')
   const [detailsSuccess, setDetailsSuccess] = useState('')
   const [isSavingDetails, setIsSavingDetails] = useState(false)
   const [systemSettingsError, setSystemSettingsError] = useState('')
   const [systemSettingsSuccess, setSystemSettingsSuccess] = useState('')
   const [isSavingSystemSettings, setIsSavingSystemSettings] = useState(false)
+  const [editablePicklists, setEditablePicklists] = useState(picklists || {})
+  const [picklistError, setPicklistError] = useState('')
+  const [picklistSuccess, setPicklistSuccess] = useState('')
+  const [isSavingPicklists, setIsSavingPicklists] = useState(false)
+
+  const picklistDefinitions = [
+    { key: 'customerStatus', title: 'סטטוס לקוח' },
+    { key: 'taskStatus', title: 'סטטוס משימה' },
+    { key: 'taskPriority', title: 'עדיפות משימה' },
+    { key: 'appointmentStatus', title: 'סטטוס פגישה' },
+    { key: 'subtaskType', title: 'סוג משימת משנה' }
+  ]
+
+  const updatePicklistOption = (listKey, optionIndex, changes) => {
+    setEditablePicklists((current) => ({
+      ...current,
+      [listKey]: current[listKey].map((option, index) => index === optionIndex ? { ...option, ...changes } : option)
+    }))
+  }
+
+  const addPicklistOption = (listKey) => {
+    const value = `CUSTOM_${globalThis.crypto.randomUUID().replaceAll('-', '').slice(0, 16).toUpperCase()}`
+    setEditablePicklists((current) => ({
+      ...current,
+      [listKey]: [...current[listKey], { value, label: 'ערך חדש', system: false }]
+    }))
+  }
+
+  const removePicklistOption = (listKey, optionIndex) => {
+    setEditablePicklists((current) => ({
+      ...current,
+      [listKey]: current[listKey].filter((_, index) => index !== optionIndex)
+    }))
+  }
+
+  const handlePicklistsSave = async () => {
+    setPicklistError('')
+    setPicklistSuccess('')
+    setIsSavingPicklists(true)
+    try {
+      const updatedPicklists = await updatePicklists(editablePicklists)
+      setEditablePicklists(updatedPicklists)
+      onPicklistsUpdate(updatedPicklists)
+      setPicklistSuccess('רשימות הבחירה נשמרו')
+    } catch (requestError) {
+      setPicklistError(requestError.response?.data?.error || 'שמירת רשימות הבחירה נכשלה')
+    } finally {
+      setIsSavingPicklists(false)
+    }
+  }
 
   const handleImageSelect = (event) => {
     const file = event.target.files?.[0]
@@ -109,11 +166,12 @@ const SettingsPage = ({ user, onUserUpdate }) => {
     setDetailsSuccess('')
     setIsSavingDetails(true)
     try {
-      const updatedUser = await updatePersonalDetails({ businessName, backupEmails, phoneNumbers })
+      const updatedUser = await updatePersonalDetails({ businessName, backupEmails, phoneNumbers, accessTokenDurationMinutes })
       onUserUpdate(updatedUser)
       setBusinessName(updatedUser?.businessName || '')
       setBackupEmails(updatedUser?.backupEmails || [])
       setPhoneNumbers(updatedUser?.phoneNumbers || [])
+      setAccessTokenDurationMinutes(updatedUser?.accessTokenDurationMinutes || 15)
       setDetailsSuccess('הפרטים האישיים נשמרו')
     } catch (requestError) {
       setDetailsError(requestError.response?.data?.error || 'שמירת הפרטים נכשלה')
@@ -128,17 +186,32 @@ const SettingsPage = ({ user, onUserUpdate }) => {
     setSystemSettingsSuccess('')
     setIsSavingSystemSettings(true)
     try {
-      const updatedUser = await updateSystemSettings({ includeSubtaskTimers, duplicateCustomerFields, duplicateCustomerMode })
+      const updatedUser = await updateSystemSettings({ includeSubtaskTimers, duplicateCustomerFields, duplicateCustomerMode, requiredFields, calendarStartHour, calendarEndHour })
       onUserUpdate(updatedUser)
       setIncludeSubtaskTimers(updatedUser?.includeSubtaskTimers !== false)
+      setCalendarStartHour(updatedUser?.calendarStartHour ?? 0)
+      setCalendarEndHour(updatedUser?.calendarEndHour ?? 24)
       setDuplicateCustomerFields(updatedUser?.duplicateCustomerFields || ['phone', 'email'])
       setDuplicateCustomerMode(updatedUser?.duplicateCustomerMode || 'WARN')
+      setRequiredFields(updatedUser?.requiredFields || { customer: ['fullName'], task: ['title'], appointment: ['customerId', 'title'] })
       setSystemSettingsSuccess('הגדרות המערכת נשמרו')
     } catch (requestError) {
       setSystemSettingsError(requestError.response?.data?.error || 'שמירת הגדרות המערכת נכשלה')
     } finally {
       setIsSavingSystemSettings(false)
     }
+  }
+
+  const toggleRequiredField = (objectType, field) => {
+    setRequiredFields((current) => {
+      const fields = current[objectType] || []
+      return {
+        ...current,
+        [objectType]: fields.includes(field)
+          ? fields.filter((requiredField) => requiredField !== field)
+          : [...fields, field]
+      }
+    })
   }
 
   return (
@@ -162,6 +235,20 @@ const SettingsPage = ({ user, onUserUpdate }) => {
                 required
                 fullWidth
               />
+              <TextField
+                select
+                label="תוקף טוקן הגישה אחרי התחברות"
+                value={accessTokenDurationMinutes}
+                onChange={(event) => setAccessTokenDurationMinutes(Number(event.target.value))}
+                helperText="אחרי שהתוקף מסתיים, האפליקציה תבקש טוקן גישה חדש אוטומטית כל עוד ההתחברות בתוקף."
+                fullWidth
+              >
+                <MenuItem value={5}>5 דקות</MenuItem>
+                <MenuItem value={15}>15 דקות</MenuItem>
+                <MenuItem value={30}>30 דקות</MenuItem>
+                <MenuItem value={60}>שעה אחת</MenuItem>
+                <MenuItem value={120}>שעתיים</MenuItem>
+              </TextField>
               <Typography fontWeight="medium">כתובות אימייל לגיבוי</Typography>
               {backupEmails.map((email, index) => (
                 <Stack key={`backup-email-${index}`} direction="row" spacing={1} alignItems="center">
@@ -329,6 +416,15 @@ const SettingsPage = ({ user, onUserUpdate }) => {
                 control={<Switch checked={includeSubtaskTimers} onChange={(event) => setIncludeSubtaskTimers(event.target.checked)} />}
                 label="כלול טיימרים בתתי־משימות"
               />
+              <Typography variant="body2" fontWeight="medium">טווח שעות ברירת מחדל בלוח הפגישות</Typography>
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ maxWidth: 440 }}>
+                <TextField select label="משעה" value={calendarStartHour} onChange={(event) => setCalendarStartHour(Number(event.target.value))} fullWidth>
+                  {Array.from({ length: 24 }, (_, hour) => <MenuItem key={hour} value={hour}>{`${String(hour).padStart(2, '0')}:00`}</MenuItem>)}
+                </TextField>
+                <TextField select label="עד שעה" value={calendarEndHour} onChange={(event) => setCalendarEndHour(Number(event.target.value))} fullWidth>
+                  {Array.from({ length: 24 - calendarStartHour }, (_, index) => calendarStartHour + index + 1).map((hour) => <MenuItem key={hour} value={hour}>{`${String(hour === 24 ? 0 : hour).padStart(2, '0')}:00${hour === 24 ? ' (למחרת)' : ''}`}</MenuItem>)}
+                </TextField>
+              </Stack>
               <FormControl component="fieldset">
                 <FormLabel component="legend">זיהוי לקוח כפול לפי</FormLabel>
                 <FormGroup row>
@@ -349,6 +445,30 @@ const SettingsPage = ({ user, onUserUpdate }) => {
                   <FormControlLabel value="BLOCK" control={<Radio />} label="חסימת יצירה" />
                 </RadioGroup>
               </FormControl>
+              <FormControl component="fieldset">
+                <FormLabel component="legend">שדות חובה נוספים</FormLabel>
+                <FormGroup>
+                  <Typography variant="body2" fontWeight="medium" sx={{ mt: 1 }}>לקוחות</Typography>
+                  <FormControlLabel control={<Checkbox checked={requiredFields.customer?.includes('fullName') ?? true} onChange={() => toggleRequiredField('customer', 'fullName')} />} label="שם מלא" />
+                  <FormControlLabel control={<Checkbox checked={requiredFields.customer?.includes('phone') || false} onChange={() => toggleRequiredField('customer', 'phone')} />} label="טלפון" />
+                  <FormControlLabel control={<Checkbox checked={requiredFields.customer?.includes('email') || false} onChange={() => toggleRequiredField('customer', 'email')} />} label="אימייל" />
+                  <FormControlLabel control={<Checkbox checked={requiredFields.customer?.includes('notes') || false} onChange={() => toggleRequiredField('customer', 'notes')} />} label="הערות" />
+                  <Typography variant="body2" fontWeight="medium" sx={{ mt: 1 }}>משימות</Typography>
+                  <FormControlLabel control={<Checkbox checked={requiredFields.task?.includes('title') ?? true} onChange={() => toggleRequiredField('task', 'title')} />} label="כותרת" />
+                  <FormControlLabel control={<Checkbox checked disabled />} label="סטטוס, עדיפות ותאריך יעד (חובה מערכתית)" />
+                  <FormControlLabel control={<Checkbox checked={requiredFields.task?.includes('customerId') || false} onChange={() => toggleRequiredField('task', 'customerId')} />} label="שיוך ללקוח" />
+                  <FormControlLabel control={<Checkbox checked={requiredFields.task?.includes('notes') || false} onChange={() => toggleRequiredField('task', 'notes')} />} label="הערות" />
+                  <Typography variant="body2" fontWeight="medium" sx={{ mt: 1 }}>פגישות</Typography>
+                  <FormControlLabel control={<Checkbox checked={requiredFields.appointment?.includes('title') ?? true} onChange={() => toggleRequiredField('appointment', 'title')} />} label="כותרת" />
+                  <FormControlLabel control={<Checkbox checked disabled />} label="סטטוס ושעת התחלה וסיום (חובה מערכתית)" />
+                  <FormControlLabel control={<Checkbox checked={requiredFields.appointment?.includes('customerId') || false} onChange={() => toggleRequiredField('appointment', 'customerId')} />} label="שיוך ללקוח" />
+                  <FormControlLabel control={<Checkbox checked={requiredFields.appointment?.includes('location') || false} onChange={() => toggleRequiredField('appointment', 'location')} />} label="מיקום" />
+                  <Typography variant="body2" fontWeight="medium" sx={{ mt: 1 }}>תתי־משימות</Typography>
+                  <FormControlLabel control={<Checkbox checked={requiredFields.subtask?.includes('type') ?? true} onChange={() => toggleRequiredField('subtask', 'type')} />} label="סוג משימה" />
+                  <FormControlLabel control={<Checkbox checked={requiredFields.subtask?.includes('notes') || false} onChange={() => toggleRequiredField('subtask', 'notes')} />} label="הערה" />
+                  <FormControlLabel control={<Checkbox checked disabled />} label="תאריך התחלה וסיום (חובה מערכתית)" />
+                </FormGroup>
+              </FormControl>
               <Button type="submit" variant="contained" startIcon={isSavingSystemSettings ? <CircularProgress size={18} color="inherit" /> : <Save />} disabled={isSavingSystemSettings} sx={{ alignSelf: 'flex-start' }}>
                 שמירת הגדרות מערכת
               </Button>
@@ -356,6 +476,48 @@ const SettingsPage = ({ user, onUserUpdate }) => {
           </Box>
           {systemSettingsError && <Alert severity="error" sx={{ mt: 2 }}>{systemSettingsError}</Alert>}
           {systemSettingsSuccess && <Alert severity="success" sx={{ mt: 2 }}>{systemSettingsSuccess}</Alert>}
+          <Typography variant="h6" fontWeight="bold" sx={{ mt: 4, mb: 2 }}>ערכי רשימות בחירה</Typography>
+          <Stack spacing={2}>
+            {picklistDefinitions.map(({ key, title }) => (
+              <Accordion key={key} disableGutters elevation={0} sx={{ border: 1, borderColor: 'divider' }}>
+                <AccordionSummary expandIcon={<ExpandMore />} aria-controls={`${key}-options`} id={`${key}-header`}>
+                  <Typography fontWeight="medium">{title}</Typography>
+                </AccordionSummary>
+                <AccordionDetails id={`${key}-options`}>
+                  <Stack spacing={1}>
+                    {(editablePicklists[key] || []).map((option, index) => (
+                      <Stack key={option.value} direction="row" spacing={1} alignItems="center">
+                        <TextField
+                          label="תווית"
+                          value={option.label}
+                          onChange={(event) => updatePicklistOption(key, index, { label: event.target.value })}
+                          inputProps={{ maxLength: 60 }}
+                          fullWidth
+                        />
+                        <Button
+                          aria-label={`מחיקת אפשרות ${option.label}`}
+                          color="error"
+                          disabled={option.system}
+                          onClick={() => removePicklistOption(key, index)}
+                          sx={{ minWidth: 44 }}
+                        >
+                          <DeleteOutline />
+                        </Button>
+                      </Stack>
+                    ))}
+                    <Button startIcon={<Add />} onClick={() => addPicklistOption(key)} sx={{ alignSelf: 'flex-start' }}>
+                      הוספת אפשרות
+                    </Button>
+                  </Stack>
+                </AccordionDetails>
+              </Accordion>
+            ))}
+            <Button variant="contained" startIcon={isSavingPicklists ? <CircularProgress size={18} color="inherit" /> : <Save />} onClick={handlePicklistsSave} disabled={isSavingPicklists} sx={{ alignSelf: 'flex-start' }}>
+              שמירת רשימות בחירה
+            </Button>
+          </Stack>
+          {picklistError && <Alert severity="error" sx={{ mt: 2 }}>{picklistError}</Alert>}
+          {picklistSuccess && <Alert severity="success" sx={{ mt: 2 }}>{picklistSuccess}</Alert>}
         </AccordionDetails>
       </Accordion>
 

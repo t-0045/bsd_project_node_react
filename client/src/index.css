@@ -1,10 +1,556 @@
+:root {
+	font-family: 'Heebo', 'Segoe UI', sans-serif;
+	color: #193331;
+	background: #f3f7f5;
+	font-synthesis: none;
+	text-rendering: optimizeLegibility;
+	--brand: #087f72;
+	--brand-deep: #075e56;
+	--ink: #193331;
+	--muted: #657b77;
+	--line: #d8e4df;
+	--paper: #ffffff;
+	--wash: #f3f7f5;
+}
+
 html,
 body,
 #root {
+	min-height: 100%;
 	direction: rtl;
 }
 
 body {
+	min-width: 320px;
 	margin: 0;
 	text-align: right;
+	background: var(--wash);
+	color: var(--ink);
+}
+
+button,
+input,
+textarea {
+	font: inherit;
+}
+
+a {
+	color: var(--brand-deep);
+	text-decoration: none;
+}
+
+a:hover {
+	text-decoration: underline;
+}
+
+.page {
+	min-height: 100vh;
+	background: var(--wash);
+}
+
+.app-header {
+	position: sticky;
+	top: 0;
+	z-index: 20;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1.5rem;
+	min-height: 4.25rem;
+	padding: 0 5vw;
+	border-bottom: 1px solid var(--line);
+	background: rgb(255 255 255 / 96%);
+}
+
+.app-brand {
+	color: var(--ink);
+	font-size: 1.15rem;
+	font-weight: 800;
+}
+
+.app-header nav {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 0.4rem;
+}
+
+.app-header nav a,
+.profile-menu > summary {
+	padding: 0.55rem 0.8rem;
+	border-radius: 0.45rem;
+	color: var(--muted);
+	cursor: pointer;
+}
+
+.app-header nav a.active,
+.app-header nav a:hover {
+	background: #e5f3ef;
+	color: var(--brand-deep);
+	text-decoration: none;
+}
+
+.profile-menu {
+	position: relative;
+}
+
+.profile-menu > summary {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	list-style: none;
+}
+
+.profile-menu > summary::-webkit-details-marker {
+	display: none;
+}
+
+.profile-menu-panel {
+	position: absolute;
+	top: calc(100% + 0.5rem);
+	inset-inline-end: 0;
+	z-index: 30;
+	min-width: 12rem;
+	padding: 0.65rem;
+	border: 1px solid var(--line);
+	border-radius: 0.55rem;
+	background: var(--paper);
+	box-shadow: 0 0.6rem 1.5rem rgb(24 65 57 / 14%);
+}
+
+.profile-menu-panel > p,
+.profile-menu-panel > a,
+.profile-menu-panel > button {
+	display: block;
+	width: 100%;
+	box-sizing: border-box;
+	margin: 0;
+	padding: 0.55rem 0.65rem;
+	text-align: start;
+}
+
+.profile-menu-panel > p {
+	color: var(--muted);
+	font-size: 0.88rem;
+}
+
+.profile-menu-panel > a:hover {
+	border-radius: 0.35rem;
+	background: #e5f3ef;
+	text-decoration: none;
+}
+
+.profile-menu-panel > button {
+	border: 0;
+	border-radius: 0.35rem;
+	background: transparent;
+	color: var(--ink);
+	cursor: pointer;
+}
+
+.profile-menu-panel > button:hover {
+	background: #e5f3ef;
+}
+
+.profile-menu img,
+.p-avatar {
+	width: 2.25rem;
+	height: 2.25rem;
+	border-radius: 50%;
+	object-fit: cover;
+	vertical-align: middle;
+}
+
+main.p-container {
+	padding-block: 2rem 3rem;
+}
+
+main h1 {
+	margin: 0 0 1.25rem;
+	color: var(--ink);
+	font-size: 1.7rem;
+	font-weight: 800;
+}
+
+h2,
+h3,
+h4,
+h5,
+h6 {
+	color: var(--ink);
+}
+
+.auth-page {
+	display: flex;
+	min-height: 100vh;
+	align-items: center;
+	justify-content: center;
+	padding-block: 2rem;
+}
+
+.auth-card {
+	width: 100%;
+	max-width: 28rem;
+	padding: clamp(1.5rem, 5vw, 2.5rem);
+	border: 1px solid var(--line);
+	border-radius: 0.8rem;
+	background: var(--paper);
+	box-shadow: 0 1.4rem 3.5rem rgb(24 65 57 / 9%);
+}
+
+.auth-card h1 {
+	margin: 0;
+	font-size: 2rem;
+}
+
+.auth-card > .p-card-content {
+	padding: 0;
+}
+
+.auth-card > .p-card-content > p {
+	margin: 0.4rem 0 1.5rem;
+	color: var(--muted);
+}
+
+.p-field {
+	display: grid;
+	gap: 0.45rem;
+	min-width: 0;
+	width: 100%;
+	color: var(--ink);
+	font-size: 0.92rem;
+	font-weight: 600;
+}
+
+.p-field small {
+	color: var(--muted);
+	font-size: 0.78rem;
+	font-weight: 400;
+}
+
+.p-inputtext,
+.p-inputtextarea,
+.p-dropdown {
+	display: block;
+	width: 100%;
+	max-width: 100%;
+	box-sizing: border-box;
+	min-height: 2.8rem;
+	border-color: #c9d8d3;
+	border-radius: 0.45rem;
+	background: #fff;
+}
+
+.p-dropdown {
+	display: flex;
+	align-items: stretch;
+	overflow: hidden;
+}
+
+.p-dropdown .p-dropdown-label {
+	flex: 1 1 auto;
+	padding: 0.7rem 0.9rem;
+	line-height: 1.2;
+	background: transparent;
+}
+
+.p-dropdown .p-dropdown-trigger {
+	width: 2.4rem;
+	min-width: 2.4rem;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0;
+	border-inline-start: 1px solid #c9d8d3;
+	background: #f6faf9;
+}
+
+.p-dropdown .p-dropdown-trigger .p-icon,
+.p-dropdown .p-dropdown-trigger-icon {
+	margin: 0;
+	font-size: 0.85rem;
+	line-height: 1;
+}
+
+.p-inputtext:enabled:focus,
+.p-inputtextarea:enabled:focus,
+.p-dropdown:not(.p-disabled).p-focus {
+	border-color: var(--brand);
+	box-shadow: 0 0 0 0.16rem rgb(8 127 114 / 14%);
+}
+
+.p-button {
+	border-color: var(--brand);
+	background: var(--brand);
+}
+
+.p-button:enabled:hover {
+	border-color: var(--brand-deep);
+	background: var(--brand-deep);
+}
+
+.auth-card form > .p-button {
+	width: 100%;
+	justify-content: center;
+	min-height: 2.9rem;
+}
+
+.auth-card .p-selectbutton {
+	display: flex;
+	width: 100%;
+	margin-block: 1.25rem;
+}
+
+.auth-card .p-selectbutton .p-button {
+	flex: 1;
+	justify-content: center;
+}
+
+.p-button,
+.p-selectbutton .p-button,
+.p-button .p-button-label,
+.p-selectbutton .p-button .p-button-label {
+	overflow: visible;
+	white-space: normal;
+	text-overflow: unset;
+	letter-spacing: 0;
+	word-spacing: 0.12em;
+}
+
+.p-button .p-button-label,
+.p-selectbutton .p-button .p-button-label {
+	display: inline-block;
+	width: auto;
+	max-width: none;
+	min-width: 0;
+	padding-inline: 0.25rem;
+}
+
+.p-selectbutton .p-button {
+	border-color: var(--line);
+	background: var(--paper);
+	color: var(--muted);
+	padding-inline: 1rem;
+}
+
+.p-selectbutton .p-button.p-highlight {
+	border-color: var(--brand);
+	background: var(--brand);
+	color: #fff;
+}
+
+.p-surface {
+	margin-bottom: 1.25rem;
+	border: 1px solid var(--line);
+	border-radius: 0.65rem;
+	background: var(--paper);
+	box-shadow: 0 0.4rem 1.25rem rgb(24 65 57 / 4%);
+}
+
+.calendar-day-header {
+	position: sticky;
+	top: 0;
+	z-index: 3;
+	background: #f0f6f4;
+	color: var(--ink);
+}
+
+.calendar-hour-labels {
+	background: #f8faf9;
+	font-variant-numeric: tabular-nums;
+}
+
+.calendar-day-column {
+	background-color: #fff;
+}
+
+.calendar-day-column:nth-child(even) {
+	background-color: #fbfdfc;
+}
+
+.calendar-day-header.calendar-current-day,
+.calendar-day-column.calendar-current-day,
+.calendar-month-today {
+	background-color: #e8f5f0;
+}
+
+.calendar-event {
+	border-inline-start: 3px solid var(--brand-deep);
+	background: #d8eee7;
+	color: var(--ink);
+}
+
+.p-card-shell {
+	min-width: 0;
+	border: 1px solid var(--line);
+	border-radius: 0.65rem;
+	background: var(--paper);
+}
+
+.p-card-content {
+	padding: 1.25rem;
+}
+
+.p-grid-item {
+	grid-column: span var(--grid-xs, 12);
+	min-width: 0;
+}
+
+.p-responsive-layout {
+	display: var(--sx-display-xs, initial);
+	position: var(--sx-position-xs, initial);
+	width: var(--sx-width-xs, auto);
+	min-width: var(--sx-min-width-xs, 0);
+	max-width: var(--sx-max-width-xs, none);
+	min-height: var(--sx-min-height-xs, 0);
+	height: var(--sx-height-xs, auto);
+	padding: var(--sx-padding-xs, initial);
+	padding-inline: var(--sx-padding-inline-xs, initial);
+	padding-block: var(--sx-padding-block-xs, initial);
+	padding-top: var(--sx-padding-top-xs, initial);
+	padding-bottom: var(--sx-padding-bottom-xs, initial);
+	margin: var(--sx-margin-xs, initial);
+	margin-inline: var(--sx-margin-inline-xs, initial);
+	margin-block: var(--sx-margin-block-xs, initial);
+	margin-top: var(--sx-margin-top-xs, initial);
+	margin-bottom: var(--sx-margin-bottom-xs, initial);
+	gap: var(--sx-gap-xs, initial);
+	grid-template-columns: var(--sx-grid-template-columns-xs, initial);
+	flex-direction: var(--sx-flex-direction-xs, initial);
+	flex: var(--sx-flex-xs, initial);
+	flex-grow: var(--sx-flex-grow-xs, initial);
+	justify-content: var(--sx-justify-content-xs, initial);
+	align-items: var(--sx-align-items-xs, initial);
+	align-self: var(--sx-align-self-xs, initial);
+	text-align: var(--sx-text-align-xs, initial);
+	font-size: var(--sx-font-size-xs, initial);
+	font-weight: var(--sx-font-weight-xs, initial);
+}
+
+.p-field:has(.p-checkbox),
+.p-field:has(.p-radiobutton),
+label:has(.p-checkbox),
+label:has(.p-radiobutton) {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.55rem;
+}
+
+.p-dialog .p-dialog-content {
+	max-height: 70vh;
+	overflow: auto;
+}
+
+.p-dialog-footer {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.6rem;
+	justify-content: flex-start;
+}
+
+.p-message {
+	margin-block: 0.5rem;
+}
+
+.p-accordion .p-accordion-header .p-accordion-header-link {
+	color: var(--ink);
+}
+
+@media (max-width: 700px) {
+	.app-header {
+		position: static;
+		align-items: flex-start;
+		flex-direction: column;
+		gap: 0.5rem;
+		padding: 0.8rem 1rem;
+	}
+
+	.app-header nav {
+		width: 100%;
+	}
+
+	.app-header nav a {
+		padding-inline: 0.6rem;
+	}
+
+	main.p-container {
+		width: calc(100% - 1rem);
+		padding-block: 1rem 2rem;
+	}
+
+	.p-grid-container {
+		grid-template-columns: minmax(0, 1fr);
+	}
+
+	.p-grid-item {
+		grid-column: 1 / -1;
+	}
+}
+
+@media (min-width: 640px) {
+	.p-responsive-layout {
+		width: var(--sx-width-sm, auto);
+		min-height: var(--sx-min-height-sm, 0);
+		padding: var(--sx-padding-sm, initial);
+		padding-inline: var(--sx-padding-inline-sm, initial);
+		padding-block: var(--sx-padding-block-sm, initial);
+		margin: var(--sx-margin-sm, initial);
+		margin-inline: var(--sx-margin-inline-sm, initial);
+		margin-block: var(--sx-margin-block-sm, initial);
+		gap: var(--sx-gap-sm, initial);
+		grid-template-columns: var(--sx-grid-template-columns-sm, initial);
+	}
+
+	.p-grid-item {
+		grid-column: span var(--grid-sm, var(--grid-xs, 12));
+	}
+}
+
+@media (min-width: 768px) {
+	.p-responsive-layout {
+		width: var(--sx-width-md, auto);
+		min-height: var(--sx-min-height-md, 0);
+		padding: var(--sx-padding-md, initial);
+		padding-inline: var(--sx-padding-inline-md, initial);
+		padding-block: var(--sx-padding-block-md, initial);
+		margin: var(--sx-margin-md, initial);
+		margin-inline: var(--sx-margin-inline-md, initial);
+		margin-block: var(--sx-margin-block-md, initial);
+		gap: var(--sx-gap-md, initial);
+		grid-template-columns: var(--sx-grid-template-columns-md, initial);
+	}
+
+	.p-grid-item {
+		grid-column: span var(--grid-md, var(--grid-sm, var(--grid-xs, 12)));
+	}
+}
+
+@media (min-width: 1024px) {
+	.p-responsive-layout {
+		width: var(--sx-width-lg, auto);
+		min-height: var(--sx-min-height-lg, 0);
+		padding: var(--sx-padding-lg, initial);
+		margin: var(--sx-margin-lg, initial);
+		gap: var(--sx-gap-lg, initial);
+		grid-template-columns: var(--sx-grid-template-columns-lg, initial);
+	}
+
+	.p-grid-item {
+		grid-column: span var(--grid-lg, var(--grid-md, var(--grid-sm, var(--grid-xs, 12))));
+	}
+}
+
+@media (min-width: 1280px) {
+	.p-responsive-layout {
+		width: var(--sx-width-xl, auto);
+		min-height: var(--sx-min-height-xl, 0);
+		padding: var(--sx-padding-xl, initial);
+		margin: var(--sx-margin-xl, initial);
+		gap: var(--sx-gap-xl, initial);
+		grid-template-columns: var(--sx-grid-template-columns-xl, initial);
+	}
+
+	.p-grid-item {
+		grid-column: span var(--grid-xl, var(--grid-lg, var(--grid-md, var(--grid-sm, var(--grid-xs, 12)))));
+	}
 }

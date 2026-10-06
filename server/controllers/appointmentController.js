@@ -6,7 +6,7 @@ const getAllAppointments = resourceController.list(appointmentModel)
 const getAppointmentById = resourceController.get(appointmentModel)
 const createAppointment = resourceController.create(appointmentModel, (body, userId) => ({
     userId,
-    customerId: body.customerId,
+    customerId: body.customerId || null,
     title: body.title,
     startTime: body.startTime,
     endTime: body.endTime,

@@ -1,23 +1,24 @@
 import { useEffect, useState } from "react"
 
-// יבואי MUI
-import { Add, AddTask, CalendarMonth, Delete, Edit, Search } from "@mui/icons-material"
-import {
-  Alert, Box, Button, CircularProgress, Dialog, DialogActions, DialogContent,
-  DialogTitle, Fab, IconButton, InputAdornment, MenuItem, Paper, Stack,
-  TextField, Typography
-} from "@mui/material"
+import { Add, AddTask, CalendarMonth, Clear, Delete, Edit, ExpandLess, ExpandMore, Search, Alert, Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, Fab, IconButton, InputAdornment, MenuItem, Paper, Stack, TextField, Typography } from "../Shared/PrimeUI"
 import { createAppointment, createCustomer, createTask, deleteCustomer, getCustomers, updateCustomer } from "../../api"
+import { formatDateTime } from '../../dateFormat'
 
+const initialFilters = { text: '', fullName: '', phone: '', email: '', notes: '', status: '' }
 const emptyCustomer = { fullName: '', phone: '', email: '', status: 'LEAD', notes: '' }
 const localDateTime = (date) => {
   const pad = (value) => String(value).padStart(2, '0')
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
 }
 
-const CustomersList = () => {
+const CustomersList = ({ user, picklists }) => {
+  const customerStatuses = picklists?.customerStatus || []
+  const customerRequired = user?.requiredFields?.customer ?? ['fullName']
+  const taskRequired = user?.requiredFields?.task ?? ['title']
+  const appointmentRequired = user?.requiredFields?.appointment ?? ['customerId', 'title']
   const [customers, setCustomers] = useState([])
-  const [val, setVal] = useState("")
+  const [filters, setFilters] = useState(initialFilters)
+  const [isAdvancedSearchOpen, setIsAdvancedSearchOpen] = useState(false)
   const [customer, setCustomer] = useState(emptyCustomer)
   const [editingId, setEditingId] = useState(null)
   const [open, setOpen] = useState(false)
@@ -27,6 +28,23 @@ const CustomersList = () => {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
   const [duplicateWarning, setDuplicateWarning] = useState(null)
+
+  const filteredCustomers = customers.filter((item) => {
+    const text = filters.text.trim().toLowerCase()
+    const searchableText = `${item.fullName || ''} ${item.phone || ''} ${item.email || ''} ${item.notes || ''} ${customerStatuses.find((option) => option.value === item.status)?.label || item.status || ''}`.toLowerCase()
+
+    if (text && !searchableText.includes(text)) return false
+    if (filters.fullName && !(item.fullName || '').toLowerCase().includes(filters.fullName.trim().toLowerCase())) return false
+    if (filters.phone && !(item.phone || '').toLowerCase().includes(filters.phone.trim().toLowerCase())) return false
+    if (filters.email && !(item.email || '').toLowerCase().includes(filters.email.trim().toLowerCase())) return false
+    if (filters.notes && !(item.notes || '').toLowerCase().includes(filters.notes.trim().toLowerCase())) return false
+    if (filters.status && item.status !== filters.status) return false
+
+    return true
+  })
+
+  const updateFilter = (name, value) => setFilters((current) => ({ ...current, [name]: value }))
+  const clearFilters = () => setFilters(initialFilters)
 
   const fetchCustomers = async () => {
     try {
@@ -128,26 +146,60 @@ const CustomersList = () => {
     <Box sx={{ position: 'relative' }}>
       <Typography variant="h4" component="h1" gutterBottom fontWeight="bold" color="primary">לקוחות</Typography>
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, mb: 2, flexWrap: 'wrap' }}>
+        <Typography variant="h6">חיפוש וסינון לקוחות</Typography>
+        <Button
+          variant="outlined"
+          startIcon={isAdvancedSearchOpen ? <ExpandLess /> : <ExpandMore />}
+          onClick={() => setIsAdvancedSearchOpen((openState) => !openState)}
+          sx={{ minWidth: 180 }}
+        >
+          {isAdvancedSearchOpen ? 'סגירת חיפוש מתקדם' : 'חיפוש מתקדם'}
+        </Button>
+      </Box>
+
       <TextField
         fullWidth
-        placeholder="חיפוש לקוחות..."
-        value={val}
-        onChange={(event) => setVal(event.target.value)}
-        sx={{ mb: 3, backgroundColor: 'background.paper' }}
+        label="חיפוש בכל השדות"
+        placeholder="שם, טלפון, אימייל, הערות..."
+        value={filters.text}
+        onChange={(event) => updateFilter('text', event.target.value)}
+        sx={{ mb: 2, backgroundColor: 'background.paper' }}
         InputProps={{ startAdornment: <InputAdornment position="start"><Search color="action" /></InputAdornment> }}
       />
+
+      {isAdvancedSearchOpen && (
+        <Box sx={{ mb: 3, p: 2.5, border: '1px solid', borderColor: 'divider', borderRadius: 2, backgroundColor: 'rgba(8, 127, 114, 0.02)' }}>
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' }, gap: 2 }}>
+            <TextField label="שם מלא" value={filters.fullName} onChange={(event) => updateFilter('fullName', event.target.value)} />
+            <TextField label="טלפון" value={filters.phone} onChange={(event) => updateFilter('phone', event.target.value)} />
+            <TextField label="אימייל" value={filters.email} onChange={(event) => updateFilter('email', event.target.value)} />
+            <TextField label="הערות" value={filters.notes} onChange={(event) => updateFilter('notes', event.target.value)} />
+            <TextField select label="סטטוס" value={filters.status} onChange={(event) => updateFilter('status', event.target.value)}>
+              <MenuItem value="">כל הסטטוסים</MenuItem>
+              {customerStatuses.map((option) => <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>)}
+            </TextField>
+          </Box>
+          <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-start' }}>
+            <Button startIcon={<Clear />} onClick={clearFilters} variant="text" disabled={!Object.values(filters).some(Boolean)}>
+              ניקוי מסננים
+            </Button>
+          </Box>
+        </Box>
+      )}
+
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>נמצאו {filteredCustomers.length} לקוחות</Typography>
       <Stack spacing={2} sx={{ mb: 4 }}>
-        {customers.filter((item) => item.fullName.toLowerCase().includes(val.toLowerCase())).map((item) => (
+        {filteredCustomers.map((item) => (
           <Paper key={item.id} elevation={1} sx={{ p: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <Box>
-              <Typography fontWeight="bold">{item.fullName}</Typography>
-              <Typography variant="body2" color="text.secondary">מזהה: {item.id}</Typography>
+              <Typography fontWeight="bold">{item.fullName || 'לקוח ללא שם'}</Typography>
               <Typography variant="body2" color="text.secondary">טלפון: {item.phone || 'ללא'} | אימייל: {item.email || 'ללא'}</Typography>
-              <Typography variant="body2" color="text.secondary">סטטוס: {{ LEAD: 'ליד', ACTIVE: 'פעיל', INACTIVE: 'לא פעיל' }[item.status] || item.status} | נמחק: {item.isDeleted ? 'כן' : 'לא'}</Typography>
+              <Typography variant="body2" color="text.secondary">סטטוס: {customerStatuses.find((option) => option.value === item.status)?.label || item.status} | נמחק: {item.isDeleted ? 'כן' : 'לא'}</Typography>
               <Typography variant="body2" color="text.secondary">הערות: {item.notes || 'ללא'}</Typography>
-              <Typography variant="caption" color="text.secondary">נוצר: {item.createdAt || 'ללא'} | עודכן: {item.updatedAt || 'ללא'}</Typography>
+              <Typography variant="caption" color="text.secondary">נוצר: {formatDateTime(item.createdAt)} | עודכן: {formatDateTime(item.updatedAt)}</Typography>
             </Box>
-            <Box>
+            <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
               <IconButton color="success" aria-label={`הוספת משימה עבור ${item.fullName}`} onClick={() => openActivity('task', item)}><AddTask /></IconButton>
               <IconButton color="primary" aria-label={`הוספת פגישה עבור ${item.fullName}`} onClick={() => openActivity('appointment', item)}><CalendarMonth /></IconButton>
               <IconButton color="primary" onClick={() => openEdit(item)}><Edit /></IconButton>
@@ -156,18 +208,18 @@ const CustomersList = () => {
           </Paper>
         ))}
       </Stack>
-      <Fab color="primary" aria-label="add customer" onClick={openAdd} sx={{ position: 'fixed', bottom: 32, right: 32 }}><Add /></Fab>
+      <Fab color="primary" aria-label="הוספת לקוח" startIcon={<Add />} onClick={openAdd} sx={{ position: 'fixed', bottom: 32, right: 32 }}>הוספת לקוח</Fab>
       <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm">
         <Box component="form" onSubmit={handleSubmit}>
           <DialogTitle>{editingId ? 'עריכת לקוח' : 'הוספת לקוח'}</DialogTitle>
           <DialogContent sx={{ display: 'grid', gap: 2, pt: 2 }}>
-            <TextField name="fullName" label="שם מלא" value={customer.fullName} onChange={handleChange} required />
-            <TextField name="phone" label="טלפון" value={customer.phone} onChange={handleChange} />
-            <TextField name="email" type="email" label="אימייל" value={customer.email} onChange={handleChange} />
+            <TextField name="fullName" label="שם מלא" value={customer.fullName} onChange={handleChange} required={customerRequired.includes('fullName')} />
+            <TextField name="phone" label="טלפון" value={customer.phone} onChange={handleChange} required={customerRequired.includes('phone')} />
+            <TextField name="email" type="email" label="אימייל" value={customer.email} onChange={handleChange} required={customerRequired.includes('email')} />
             <TextField select name="status" label="סטטוס" value={customer.status} onChange={handleChange}>
-              <MenuItem value="LEAD">ליד</MenuItem><MenuItem value="ACTIVE">פעיל</MenuItem><MenuItem value="INACTIVE">לא פעיל</MenuItem>
+              {customerStatuses.map((option) => <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>)}
             </TextField>
-            <TextField name="notes" label="הערות" multiline rows={3} value={customer.notes} onChange={handleChange} />
+            <TextField name="notes" label="הערות" multiline rows={3} value={customer.notes} onChange={handleChange} required={customerRequired.includes('notes')} />
           </DialogContent>
           <DialogActions><Button onClick={() => setOpen(false)}>ביטול</Button><Button type="submit" variant="contained">שמירה</Button></DialogActions>
         </Box>
@@ -194,23 +246,23 @@ const CustomersList = () => {
         <Box component="form" onSubmit={handleActivitySubmit}>
           <DialogTitle>{activityType === 'appointment' ? 'הוספת פגישה' : 'הוספת משימה'} עבור {activityCustomer?.fullName}</DialogTitle>
           <DialogContent sx={{ display: 'grid', gap: 2, pt: 2 }}>
-            <TextField name="title" label="כותרת" value={activityForm.title || ''} onChange={({ target }) => setActivityForm({ ...activityForm, title: target.value })} required />
+            <TextField name="title" label="כותרת" value={activityForm.title || ''} onChange={({ target }) => setActivityForm({ ...activityForm, title: target.value })} required={activityType === 'appointment' ? appointmentRequired.includes('title') : taskRequired.includes('title')} />
             {activityType === 'appointment' ? <>
               <TextField name="startTime" type="datetime-local" label="שעת התחלה" value={activityForm.startTime || ''} onChange={({ target }) => setActivityForm({ ...activityForm, startTime: target.value })} InputLabelProps={{ shrink: true }} required />
               <TextField name="endTime" type="datetime-local" label="שעת סיום" value={activityForm.endTime || ''} onChange={({ target }) => setActivityForm({ ...activityForm, endTime: target.value })} InputLabelProps={{ shrink: true }} required />
-              <TextField name="location" label="מיקום" value={activityForm.location || ''} onChange={({ target }) => setActivityForm({ ...activityForm, location: target.value })} />
+              <TextField name="location" label="מיקום" value={activityForm.location || ''} onChange={({ target }) => setActivityForm({ ...activityForm, location: target.value })} required={appointmentRequired.includes('location')} />
               <TextField select name="status" label="סטטוס" value={activityForm.status || 'SCHEDULED'} onChange={({ target }) => setActivityForm({ ...activityForm, status: target.value })}>
-                <MenuItem value="SCHEDULED">מתוכננת</MenuItem><MenuItem value="COMPLETED">הושלמה</MenuItem><MenuItem value="CANCELLED">בוטלה</MenuItem>
+                {(picklists?.appointmentStatus || []).map((option) => <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>)}
               </TextField>
             </> : <>
               <TextField select name="priority" label="עדיפות" value={activityForm.priority || 'MEDIUM'} onChange={({ target }) => setActivityForm({ ...activityForm, priority: target.value })}>
-                <MenuItem value="LOW">נמוכה</MenuItem><MenuItem value="MEDIUM">בינונית</MenuItem><MenuItem value="HIGH">גבוהה</MenuItem><MenuItem value="URGENT">דחופה</MenuItem>
+                {(picklists?.taskPriority || []).map((option) => <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>)}
               </TextField>
               <TextField select name="status" label="סטטוס" value={activityForm.status || 'OPEN'} onChange={({ target }) => setActivityForm({ ...activityForm, status: target.value })}>
-                <MenuItem value="OPEN">פתוחה</MenuItem><MenuItem value="IN_PROGRESS">בתהליך</MenuItem><MenuItem value="COMPLETED">הושלמה</MenuItem>
+                {picklists?.taskStatus?.filter((option) => option.value !== 'DELETED').map((option) => <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>)}
               </TextField>
               <TextField name="dueDate" type="datetime-local" label="תאריך יעד" value={activityForm.dueDate || ''} onChange={({ target }) => setActivityForm({ ...activityForm, dueDate: target.value })} InputLabelProps={{ shrink: true }} required />
-              <TextField name="notes" label="הערות" value={activityForm.notes || ''} onChange={({ target }) => setActivityForm({ ...activityForm, notes: target.value })} multiline rows={3} />
+              <TextField name="notes" label="הערות" value={activityForm.notes || ''} onChange={({ target }) => setActivityForm({ ...activityForm, notes: target.value })} multiline rows={3} required={taskRequired.includes('notes')} />
             </>}
           </DialogContent>
           <DialogActions><Button onClick={closeActivity}>ביטול</Button><Button type="submit" variant="contained">שמירה</Button></DialogActions>

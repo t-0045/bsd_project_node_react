@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react"
 import { useSearchParams } from "react-router-dom"
 
-// יבואי MUI
-import { Add, ChevronLeft, ChevronRight, Clear, Delete, Edit, ExpandLess, ExpandMore, Search } from "@mui/icons-material"
-import { Alert, Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, Fab, IconButton, InputAdornment, MenuItem, Paper, Stack, Tab, Tabs, TextField, Typography } from "@mui/material"
+import { Add, ChevronLeft, ChevronRight, Clear, Delete, Edit, ExpandLess, ExpandMore, Search, Alert, Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, Fab, IconButton, InputAdornment, MenuItem, Paper, Stack, Tab, Tabs, TextField, Typography } from "../Shared/PrimeUI"
 import { createAppointment, deleteAppointment, getAppointments, getCustomers, updateAppointment } from "../../api"
+import { formatDateTime } from '../../dateFormat'
 import QuickCreateCustomer, { QuickCreateCustomerOption } from '../Customer/QuickCreateCustomer'
 
 const emptyAppointment = { customerId: '', title: '', startTime: '', endTime: '', location: '', status: 'SCHEDULED' }
@@ -17,7 +16,10 @@ const sameDay = (first, second) => dateKey(first) === dateKey(second)
 const appointmentDate = (item, field = 'startTime') => { const date = new Date(item[field]); return Number.isNaN(date.getTime()) ? null : date }
 const initialFilters = { text: '', customerId: '', status: '', fromDate: '', toDate: '', fromHour: '', toHour: '' }
 
-const AppointmentsList = () => {
+const AppointmentsList = ({ picklists, user }) => {
+  const appointmentStatuses = picklists?.appointmentStatus || []
+  const appointmentRequired = user?.requiredFields?.appointment ?? ['customerId', 'title']
+  const appointmentTitleRequired = user?.requiredFields?.appointment?.includes('title') ?? true
   const [appointments, setAppointments] = useState([])
   const [customers, setCustomers] = useState([])
   const [appointment, setAppointment] = useState(emptyAppointment)
@@ -30,8 +32,8 @@ const AppointmentsList = () => {
   const [calendarView, setCalendarView] = useState('week')
   const [calendarDate, setCalendarDate] = useState(new Date())
   const [isAdvancedSearchOpen, setIsAdvancedSearchOpen] = useState(false)
-  const [dayStartHour, setDayStartHour] = useState(0)
-  const [dayEndHour, setDayEndHour] = useState(24)
+  const [dayStartHour, setDayStartHour] = useState(user?.calendarStartHour ?? 0)
+  const [dayEndHour, setDayEndHour] = useState(user?.calendarEndHour ?? 24)
   const [searchParams, setSearchParams] = useSearchParams()
   const customerIdFromUrl = searchParams.get('customerId') || ''
   const appointmentIdFromUrl = searchParams.get('appointmentId') || ''
@@ -65,7 +67,10 @@ const AppointmentsList = () => {
   const openAdd = () => { setAppointment({ ...emptyAppointment, customerId: '' }); setEditingId(null); setOpen(true) }
   const openEdit = (item) => { setAppointment({ ...emptyAppointment, ...item }); setEditingId(item.id); setOpen(true) }
   const handleChange = ({ target }) => {
-    if (target.value === '__create_customer__') return
+    if (target.value === '__create_customer__') {
+      setQuickCreateCustomerOpen(true)
+      return
+    }
     setAppointment({ ...appointment, [target.name]: target.value })
   }
   const handleCustomerCreated = (createdCustomer) => {
@@ -178,20 +183,20 @@ const AppointmentsList = () => {
     const lastMinute = calendarView === 'day' || calendarView === 'week' ? dayEndHour * 60 : 24 * 60
     const slots = Array.from({ length: (lastMinute - firstMinute) / step }, (_, index) => firstMinute + index * step)
     const gridHeight = (lastMinute - firstMinute) * unit
-    return <Box sx={{ display: 'grid', gridTemplateColumns: `64px repeat(${days.length}, minmax(${isDay ? 180 : 120}px, 1fr))`, minWidth: isDay ? 244 : 900, overflow: 'auto' }}>
+    return <Box className="calendar-time-grid" sx={{ display: 'grid', gridTemplateColumns: `64px repeat(${days.length}, minmax(${isDay ? 180 : 120}px, 1fr))`, minWidth: isDay ? 244 : 900, overflow: 'auto' }}>
       <Box />
-      {days.map((date) => <Box key={dateKey(date)} sx={{ p: 1, textAlign: 'center', borderBottom: '1px solid', borderColor: 'divider', fontWeight: 'bold' }}>{isDay ? dayNames[date.getDay()] : `${dayNames[date.getDay()]} ${date.getDate()}/${date.getMonth() + 1}`}</Box>)}
-      <Box sx={{ position: 'relative' }}>{slots.map((minutes) => <Box key={minutes} sx={{ height: 60 * unit, borderBottom: '1px solid', borderColor: 'divider', color: 'text.secondary', fontSize: 12, pt: 0.5 }}>{`${pad(Math.floor(minutes / 60))}:${pad(minutes % 60)}`}</Box>)}</Box>
-      {days.map((date) => <Box key={dateKey(date)} onDragOver={(event) => event.preventDefault()} sx={{ position: 'relative', height: gridHeight, borderLeft: '1px solid', borderColor: 'divider', background: 'repeating-linear-gradient(to bottom, transparent 0, transparent 59px, rgba(0,0,0,.08) 60px)' }}>
+      {days.map((date) => <Box key={dateKey(date)} className={`calendar-day-header${sameDay(date, new Date()) ? ' calendar-current-day' : ''}`} sx={{ p: 1, textAlign: 'center', borderBottom: '1px solid', borderColor: 'divider', fontWeight: 'bold' }}>{isDay ? dayNames[date.getDay()] : `${dayNames[date.getDay()]} ${date.getDate()}/${date.getMonth() + 1}`}</Box>)}
+      <Box className="calendar-hour-labels" sx={{ position: 'relative' }}>{slots.map((minutes) => <Box key={minutes} sx={{ height: 60 * unit, borderBottom: '1px solid', borderColor: 'divider', color: 'text.secondary', fontSize: 12, pt: 0.5 }}>{`${pad(Math.floor(minutes / 60))}:${pad(minutes % 60)}`}</Box>)}</Box>
+      {days.map((date) => <Box key={dateKey(date)} className={`calendar-day-column${sameDay(date, new Date()) ? ' calendar-current-day' : ''}`} onDragOver={(event) => event.preventDefault()} sx={{ position: 'relative', height: gridHeight, borderLeft: '1px solid', borderColor: 'divider', background: 'repeating-linear-gradient(to bottom, transparent 0, transparent 59px, rgba(0,0,0,.08) 60px)' }}>
         {slots.map((minutes) => <Box key={minutes} onClick={() => { const slotDate = new Date(date); slotDate.setHours(Math.floor(minutes / 60), minutes % 60, 0, 0); openNewAt(slotDate) }} onDrop={(event) => handleCalendarDrop(event, date, minutes)} sx={{ height: 60 * unit, borderBottom: isDay ? '1px dashed' : '1px solid', borderColor: 'divider' }} />)}
         {visibleForDay(date).map(appointmentBlock)}
       </Box>)}
     </Box>
   }
 
-  const renderMonth = () => <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(110px, 1fr))', minWidth: 770, borderTop: '1px solid', borderLeft: '1px solid', borderColor: 'divider' }}>
+  const renderMonth = () => <Box className="calendar-month-grid" sx={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(110px, 1fr))', minWidth: 770, borderTop: '1px solid', borderLeft: '1px solid', borderColor: 'divider' }}>
     {dayNames.map((name) => <Box key={name} sx={{ p: 1, textAlign: 'center', fontWeight: 'bold', borderRight: '1px solid', borderBottom: '1px solid', borderColor: 'divider' }}>{name}</Box>)}
-    {calendarDays.map((date, index) => <Box key={date ? dateKey(date) : `empty-${index}`} onClick={() => date && openNewAt(date)} sx={{ minHeight: 130, p: 1, borderRight: '1px solid', borderBottom: '1px solid', borderColor: 'divider', bgcolor: date && sameDay(date, new Date()) ? 'action.hover' : 'transparent', cursor: date ? 'pointer' : 'default' }}>{date && <><Typography variant="caption" fontWeight="bold">{date.getDate()}</Typography>{visibleForDay(date).map((item) => <Paper key={item.id} onClick={(event) => { event.stopPropagation(); openEdit(item) }} sx={{ mt: 0.5, px: 0.5, bgcolor: 'primary.light', color: 'primary.contrastText', overflow: 'hidden' }}><Typography variant="caption" noWrap>{item.title}</Typography></Paper>)}</>}</Box>)}
+    {calendarDays.map((date, index) => <Box key={date ? dateKey(date) : `empty-${index}`} className={date && sameDay(date, new Date()) ? 'calendar-month-today' : undefined} onClick={() => date && openNewAt(date)} sx={{ minHeight: 130, p: 1, borderRight: '1px solid', borderBottom: '1px solid', borderColor: 'divider', bgcolor: date && sameDay(date, new Date()) ? 'action.hover' : 'transparent', cursor: date ? 'pointer' : 'default' }}>{date && <><Typography variant="caption" fontWeight="bold">{date.getDate()}</Typography>{visibleForDay(date).map((item) => <Paper key={item.id} className="calendar-event" onClick={(event) => { event.stopPropagation(); openEdit(item) }} sx={{ mt: 0.5, px: 0.5, bgcolor: 'primary.light', color: 'primary.contrastText', overflow: 'hidden' }}><Typography variant="caption" noWrap>{item.title}</Typography></Paper>)}</>}</Box>)}
   </Box>
 
   if (isLoading) return <Box display="flex" justifyContent="center" alignItems="center" minHeight="50vh"><CircularProgress /></Box>
@@ -206,9 +211,9 @@ const AppointmentsList = () => {
         </Stack>
         <TextField fullWidth label="חיפוש בכל השדות" placeholder="כותרת, לקוח, מיקום..." value={filters.text} onChange={(event) => updateFilter('text', event.target.value)} InputProps={{ startAdornment: <InputAdornment position="start"><Search color="action" /></InputAdornment> }} />
         {isAdvancedSearchOpen && <>
-          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(4, 1fr)' }, gap: 2, mt: 2 }}>
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)', xl: 'repeat(4, 1fr)' }, gap: 1, mt: 1.5 }}>
             <TextField select label="לקוח" value={filters.customerId} onChange={(event) => updateFilter('customerId', event.target.value)}><MenuItem value="">כל הלקוחות</MenuItem>{customers.map((item) => <MenuItem key={item.id} value={item.id}>{item.fullName}</MenuItem>)}</TextField>
-            <TextField select label="סטטוס" value={filters.status} onChange={(event) => updateFilter('status', event.target.value)}><MenuItem value="">כל הסטטוסים</MenuItem><MenuItem value="SCHEDULED">מתוכננת</MenuItem><MenuItem value="COMPLETED">הושלמה</MenuItem><MenuItem value="CANCELLED">בוטלה</MenuItem></TextField>
+            <TextField select label="סטטוס" value={filters.status} onChange={(event) => updateFilter('status', event.target.value)}><MenuItem value="">כל הסטטוסים</MenuItem>{appointmentStatuses.map((option) => <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>)}</TextField>
             <TextField label="מתאריך" type="date" value={filters.fromDate} onChange={(event) => updateFilter('fromDate', event.target.value)} InputLabelProps={{ shrink: true }} />
             <TextField label="עד תאריך" type="date" value={filters.toDate} onChange={(event) => updateFilter('toDate', event.target.value)} InputLabelProps={{ shrink: true }} />
             <TextField select label="משעה" value={filters.fromHour} onChange={(event) => updateFilter('fromHour', event.target.value)}><MenuItem value="">כל השעות</MenuItem>{Array.from({ length: 24 }, (_, hour) => <MenuItem key={hour} value={hour}>{`${pad(hour)}:00`}</MenuItem>)}</TextField>
@@ -237,17 +242,17 @@ const AppointmentsList = () => {
       <Stack spacing={2} sx={{ mb: 4 }}>
         {filteredAppointments.map((item) => (
           <Paper key={item.id} elevation={1} sx={{ p: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Box><Typography fontWeight="bold">{item.title}</Typography><Typography variant="body2" color="text.secondary">מזהה: {item.id} | לקוח: {item.customerId} ({customerName(item.customerId)})</Typography><Typography variant="body2" color="text.secondary">התחלה: {item.startTime} | סיום: {item.endTime}</Typography><Typography variant="body2" color="text.secondary">מיקום: {item.location || 'ללא'} | סטטוס: {{ SCHEDULED: 'מתוכננת', COMPLETED: 'הושלמה', CANCELLED: 'בוטלה' }[item.status] || item.status}</Typography><Typography variant="caption" color="text.secondary">נוצרה: {item.createdAt || 'ללא'} | עודכנה: {item.updatedAt || 'ללא'}</Typography></Box>
-            <Box><IconButton color="primary" onClick={() => openEdit(item)}><Edit /></IconButton><IconButton color="error" onClick={() => handleDelete(item.id)}><Delete /></IconButton></Box>
+            <Box><Typography fontWeight="bold">{item.title || 'ללא כותרת'}</Typography><Typography variant="body2" color="text.secondary">לקוח: {item.customerId ? customerName(item.customerId) : 'ללא לקוח'}</Typography><Typography variant="body2" color="text.secondary">התחלה: {formatDateTime(item.startTime)} | סיום: {formatDateTime(item.endTime)}</Typography><Typography variant="body2" color="text.secondary">מיקום: {item.location || 'ללא'} | סטטוס: {appointmentStatuses.find((option) => option.value === item.status)?.label || item.status}</Typography><Typography variant="caption" color="text.secondary">נוצרה: {formatDateTime(item.createdAt)} | עודכנה: {formatDateTime(item.updatedAt)}</Typography></Box>
+            <Box sx={{ display: 'flex', gap: 0.5 }}><IconButton color="primary" aria-label="עריכת פגישה" onClick={() => openEdit(item)}><Edit /></IconButton><IconButton color="error" aria-label="מחיקת פגישה" onClick={() => handleDelete(item.id)}><Delete /></IconButton></Box>
           </Paper>
         ))}
       </Stack>
-      <Fab color="primary" aria-label="add appointment" onClick={openAdd} sx={{ position: 'fixed', bottom: 32, right: 32 }}><Add /></Fab>
+      <Fab color="primary" aria-label="הוספת פגישה" startIcon={<Add />} onClick={openAdd} sx={{ position: 'fixed', bottom: 32, right: 32 }}>הוספת פגישה</Fab>
       <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm"><Box component="form" onSubmit={handleSubmit}><DialogTitle>{editingId ? 'עריכת פגישה' : 'הוספת פגישה'}</DialogTitle><DialogContent sx={{ display: 'grid', gap: 2, pt: 2 }}>
-        <TextField select name="customerId" label="לקוח" value={appointment.customerId} onChange={handleChange} required>{customers.map((item) => <MenuItem key={item.id} value={item.id}>{item.fullName}</MenuItem>)}<QuickCreateCustomerOption onClick={() => setQuickCreateCustomerOpen(true)} /></TextField>
-        <TextField name="title" label="כותרת" value={appointment.title} onChange={handleChange} required /><TextField name="startTime" type="datetime-local" label="שעת התחלה" value={appointment.startTime} onChange={handleChange} InputLabelProps={{ shrink: true }} required /><TextField name="endTime" type="datetime-local" label="שעת סיום" value={appointment.endTime} onChange={handleChange} InputLabelProps={{ shrink: true }} required /><TextField name="location" label="מיקום" value={appointment.location} onChange={handleChange} /><TextField select name="status" label="סטטוס" value={appointment.status} onChange={handleChange}><MenuItem value="SCHEDULED">מתוכננת</MenuItem><MenuItem value="COMPLETED">הושלמה</MenuItem><MenuItem value="CANCELLED">בוטלה</MenuItem></TextField>
+        <TextField select name="customerId" label="לקוח" value={appointment.customerId} onChange={handleChange} required={appointmentRequired.includes('customerId')}>{!appointmentRequired.includes('customerId') && <MenuItem value="">ללא לקוח</MenuItem>}{customers.map((item) => <MenuItem key={item.id} value={item.id}>{item.fullName}</MenuItem>)}<QuickCreateCustomerOption onClick={() => setQuickCreateCustomerOpen(true)} /></TextField>
+        <TextField name="title" label="כותרת" value={appointment.title} onChange={handleChange} required={appointmentTitleRequired} /><TextField name="startTime" type="datetime-local" label="שעת התחלה" value={appointment.startTime} onChange={handleChange} InputLabelProps={{ shrink: true }} required /><TextField name="endTime" type="datetime-local" label="שעת סיום" value={appointment.endTime} onChange={handleChange} InputLabelProps={{ shrink: true }} required /><TextField name="location" label="מיקום" value={appointment.location} onChange={handleChange} required={appointmentRequired.includes('location')} /><TextField select name="status" label="סטטוס" value={appointment.status} onChange={handleChange}>{appointmentStatuses.map((option) => <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>)}</TextField>
       </DialogContent><DialogActions><Button onClick={() => setOpen(false)}>ביטול</Button><Button type="submit" variant="contained">שמירה</Button></DialogActions></Box></Dialog>
-      <QuickCreateCustomer open={quickCreateCustomerOpen} onClose={() => setQuickCreateCustomerOpen(false)} onCreated={handleCustomerCreated} />
+      <QuickCreateCustomer open={quickCreateCustomerOpen} onClose={() => setQuickCreateCustomerOpen(false)} onCreated={handleCustomerCreated} picklists={picklists} user={user} />
     </Box>
   )
 }

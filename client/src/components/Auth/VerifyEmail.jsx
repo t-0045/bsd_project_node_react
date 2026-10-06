@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { Alert, Box, Button, Container, TextField, Typography } from "@mui/material"
+import { Alert, Box, Button, Container, TextField, Typography } from "../Shared/PrimeUI"
 
 const VerifyEmail = () => {
   const [form, setForm] = useState(() => {

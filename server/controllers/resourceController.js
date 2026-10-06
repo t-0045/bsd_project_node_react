@@ -1,12 +1,39 @@
 const crypto = require('crypto')
+const userModel = require('../models/User')
+const { getEffectivePicklists } = require('../config/picklists')
 
-const enums = {
-    customers: { status: ['LEAD', 'ACTIVE', 'INACTIVE'] },
-    appointments: { status: ['SCHEDULED', 'COMPLETED', 'CANCELLED'] },
-    tasks: {
-        priority: ['LOW', 'MEDIUM', 'HIGH', 'URGENT'],
-        status: ['OPEN', 'IN_PROGRESS', 'COMPLETED', 'DELETED']
-    }
+const picklistFields = {
+    customers: { status: 'customerStatus' },
+    appointments: { status: 'appointmentStatus' },
+    tasks: { priority: 'taskPriority', status: 'taskStatus' }
+}
+
+const requiredFieldNames = {
+    customers: 'customer',
+    tasks: 'task',
+    appointments: 'appointment'
+}
+const defaultRequiredFields = {
+    customer: ['fullName'],
+    task: ['title'],
+    appointment: ['customerId', 'title']
+}
+const allowedRequiredFields = {
+    customer: ['fullName', 'phone', 'email', 'notes'],
+    task: ['title', 'customerId', 'notes'],
+    appointment: ['title', 'customerId', 'location']
+}
+
+const validateRequiredFields = async (model, body, userId, existingRecord = {}) => {
+    const objectType = requiredFieldNames[model.collection.name]
+    if (!objectType) return null
+    const user = await userModel.findOne({ id: userId }).select('requiredFields').lean()
+    const requiredFields = Object.hasOwn(user?.requiredFields || {}, objectType)
+        ? user.requiredFields[objectType]
+        : defaultRequiredFields[objectType]
+    const values = { ...existingRecord, ...body }
+    const missingField = requiredFields.find((field) => values[field] === undefined || values[field] === null || String(values[field]).trim() === '')
+    return missingField ? `${missingField} is required` : null
 }
 
 const findOwned = async (model, id, userId, includeDeleted = false) => {
@@ -24,10 +51,14 @@ const listOwned = async (model, userId) => {
     }).lean()
 }
 
-const validateEnums = (model, body) => {
-    const collectionEnums = enums[model.collection.name] || {}
-    for (const [field, values] of Object.entries(collectionEnums)) {
-        if (body[field] !== undefined && !values.includes(body[field])) {
+const validatePicklists = async (model, body, userId) => {
+    const collectionFields = picklistFields[model.collection.name] || {}
+    const user = await userModel.findOne({ id: userId }).select('picklists').lean()
+    const picklists = getEffectivePicklists(user?.picklists)
+    for (const [field, picklistKey] of Object.entries(collectionFields)) {
+        if (body[field] === undefined) continue
+        const values = picklists[picklistKey].map((option) => option.value)
+        if (!values.includes(body[field])) {
             return `Invalid ${field}`
         }
     }
@@ -63,10 +94,12 @@ const get = (model) => {
 const create = (model, buildRecord, relation) => {
     return async (req, res) => {
         try {
-            const enumError = validateEnums(model, req.body)
-            if (enumError) {
-                return res.status(400).json({ error: enumError })
+            const picklistError = await validatePicklists(model, req.body, req.user.id)
+            if (picklistError) {
+                return res.status(400).json({ error: picklistError })
             }
+            const requiredFieldError = await validateRequiredFields(model, req.body, req.user.id)
+            if (requiredFieldError) return res.status(400).json({ error: requiredFieldError })
 
             const relationId = relation && relation.id(req)
             const relationExists = relationId && await findOwned(relation.collection, relationId, req.user.id)
@@ -97,10 +130,12 @@ const updateRecord = (model, protectedFields) => {
                 return res.status(404).send('Not found')
             }
 
-            const enumError = validateEnums(model, req.body)
-            if (enumError) {
-                return res.status(400).json({ error: enumError })
+            const picklistError = await validatePicklists(model, req.body, req.user.id)
+            if (picklistError) {
+                return res.status(400).json({ error: picklistError })
             }
+            const requiredFieldError = await validateRequiredFields(model, req.body, req.user.id, record)
+            if (requiredFieldError) return res.status(400).json({ error: requiredFieldError })
 
             const changes = Object.keys(req.body)
                 .filter((field) => !protectedFields.includes(field))

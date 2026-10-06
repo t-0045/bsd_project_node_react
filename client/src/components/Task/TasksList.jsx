@@ -1,14 +1,12 @@
 import { useEffect, useState } from "react"
 import { useSearchParams } from "react-router-dom"
 
-// יבואי MUI
-import { Add, Clear, Delete, Edit, ExpandLess, ExpandMore, Pause, PlayArrow, Stop, Search } from "@mui/icons-material"
-import {
-  Alert, Box, Button, Checkbox, CircularProgress, Dialog, DialogActions,
+import { Add, Clear, Delete, Edit, ExpandLess, ExpandMore, Pause, PlayArrow, Stop, Search, Alert, Box, Button, Checkbox, CircularProgress, Dialog, DialogActions,
   DialogContent, DialogTitle, Fab, IconButton, InputAdornment, MenuItem, Paper,
   Stack, TextField, Typography
-} from "@mui/material"
+} from "../Shared/PrimeUI"
 import { changeSubtaskTimerStatus, createTask, deleteTask, getCustomers, getTasks, updateTask } from "../../api"
+import { formatDateTime } from '../../dateFormat'
 import QuickCreateCustomer, { QuickCreateCustomerOption } from '../Customer/QuickCreateCustomer'
 
 const emptyTask = { customerId: '', title: '', priority: 'MEDIUM', status: 'OPEN', dueDate: '', notes: '', subtasks: [] }
@@ -23,9 +21,21 @@ const nextMinute = () => {
   date.setMinutes(date.getMinutes() + 1)
   return date
 }
+const formatDuration = (seconds) => {
+  const hours = Math.floor(seconds / 3600)
+  const minutes = Math.floor((seconds % 3600) / 60)
+  const remainingSeconds = seconds % 60
+  return [hours, minutes, remainingSeconds].map((value) => String(value).padStart(2, '0')).join(':')
+}
 
-const TasksList = ({ user }) => {
+const TasksList = ({ user, picklists }) => {
   const includeSubtaskTimers = user?.includeSubtaskTimers !== false
+  const taskRequired = user?.requiredFields?.task ?? ['title']
+  const taskStatuses = picklists?.taskStatus || []
+  const taskPriorities = picklists?.taskPriority || []
+  const subtaskTypes = picklists?.subtaskType || []
+  const subtaskRequired = user?.requiredFields?.subtask ?? ['type']
+  const taskTitleRequired = user?.requiredFields?.task?.includes('title') ?? true
   const [tasks, setTasks] = useState([])
   const [customers, setCustomers] = useState([])
   const [filters, setFilters] = useState(initialFilters)
@@ -36,12 +46,14 @@ const TasksList = ({ user }) => {
   const [quickCreateCustomerOpen, setQuickCreateCustomerOpen] = useState(false)
   const [subtaskDialogOpen, setSubtaskDialogOpen] = useState(false)
   const [selectedTask, setSelectedTask] = useState(null)
-  const [subtaskTitle, setSubtaskTitle] = useState('')
+  const [subtaskType, setSubtaskType] = useState('')
+  const [subtaskNotes, setSubtaskNotes] = useState('')
   const [subtaskStartDate, setSubtaskStartDate] = useState('')
   const [subtaskDueDate, setSubtaskDueDate] = useState('')
   const [completionQuestion, setCompletionQuestion] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
+  const [timerNow, setTimerNow] = useState(0)
   const [searchParams, setSearchParams] = useSearchParams()
   const customerIdFromUrl = searchParams.get('customerId') || ''
   const taskIdFromUrl = searchParams.get('taskId') || ''
@@ -64,6 +76,23 @@ const TasksList = ({ user }) => {
     try { setTasks(await getTasks()) }
     catch (requestError) { setError(requestError.response?.data?.error || 'Failed to fetch tasks') }
     finally { setIsLoading(false) }
+  }
+
+  const hasRunningTimer = tasks.some((item) => item.subtasks?.some((subtask) => subtask.status === 'RUNNING'))
+
+  useEffect(() => {
+    if (!hasRunningTimer) return undefined
+    const intervalId = window.setInterval(() => setTimerNow(Date.now()), 1000)
+    return () => window.clearInterval(intervalId)
+  }, [hasRunningTimer])
+
+  const getSubtaskDuration = (subtask) => {
+    const accumulated = Number(subtask.totalDuration) || 0
+    if (subtask.status !== 'RUNNING' || !timerNow) return accumulated
+    const activeSession = subtask.sessions?.at(-1)
+    const startedAt = activeSession ? Date.parse(activeSession.startedAt) : NaN
+    if (!Number.isFinite(startedAt)) return accumulated
+    return accumulated + Math.max(0, Math.floor((timerNow - startedAt) / 1000))
   }
 
   useEffect(() => {
@@ -96,7 +125,10 @@ const TasksList = ({ user }) => {
   const openAdd = () => { setTask({ ...emptyTask, customerId: '' }); setEditingId(null); setOpen(true) }
   const openEdit = (selectedTask) => { setTask({ ...emptyTask, ...selectedTask }); setEditingId(selectedTask.id); setOpen(true) }
   const handleChange = ({ target }) => {
-    if (target.value === '__create_customer__') return
+    if (target.value === '__create_customer__') {
+      setQuickCreateCustomerOpen(true)
+      return
+    }
     setTask({ ...task, [target.name]: target.value })
   }
   const handleCustomerCreated = (createdCustomer) => {
@@ -122,7 +154,8 @@ const TasksList = ({ user }) => {
 
   const openAddSubtask = (selectedTaskItem) => {
     setSelectedTask(selectedTaskItem)
-    setSubtaskTitle('')
+    setSubtaskType(subtaskTypes[0]?.value || '')
+    setSubtaskNotes('')
     setSubtaskStartDate(localDateTime(nextMinute()))
     setSubtaskDueDate(selectedTaskItem.dueDate || '')
     setSubtaskDialogOpen(true)
@@ -130,12 +163,14 @@ const TasksList = ({ user }) => {
 
   const handleAddSubtask = async (event) => {
     event.preventDefault()
-    const title = subtaskTitle.trim()
-    if (!title || !subtaskStartDate || !subtaskDueDate || !selectedTask) return
+    const selectedType = subtaskTypes.find((option) => option.value === subtaskType)
+    if ((subtaskRequired.includes('type') && !selectedType) || !subtaskStartDate || !subtaskDueDate || !selectedTask) return
     try {
       await updateTask(selectedTask.id, {
         subtasks: [...(selectedTask.subtasks || []), {
-          title,
+          type: selectedType?.value || null,
+          title: selectedType?.label || '',
+          notes: subtaskNotes.trim(),
           startDate: subtaskStartDate,
           dueDate: subtaskDueDate || null,
           completed: false
@@ -187,10 +222,10 @@ const TasksList = ({ user }) => {
           <Typography variant="h6">חיפוש וסינון משימות</Typography>
         </Stack>
         <TextField fullWidth label="חיפוש בכל השדות" placeholder="כותרת, לקוח, הערות..." value={filters.text} onChange={(event) => updateFilter('text', event.target.value)} InputProps={{ startAdornment: <InputAdornment position="start"><Search color="action" /></InputAdornment> }} />
-        {isAdvancedSearchOpen && <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(4, 1fr)' }, gap: 2, mt: 2 }}>
+        {isAdvancedSearchOpen && <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)', xl: 'repeat(4, 1fr)' }, gap: 1, mt: 1.5 }}>
           <TextField select label="לקוח" value={filters.customerId} onChange={(event) => updateFilter('customerId', event.target.value)}><MenuItem value="">כל הלקוחות</MenuItem>{availableCustomers.map((item) => <MenuItem key={item.id} value={item.id}>{item.fullName}</MenuItem>)}</TextField>
-          <TextField select label="עדיפות" value={filters.priority} onChange={(event) => updateFilter('priority', event.target.value)}><MenuItem value="">כל העדיפויות</MenuItem><MenuItem value="LOW">נמוכה</MenuItem><MenuItem value="MEDIUM">בינונית</MenuItem><MenuItem value="HIGH">גבוהה</MenuItem><MenuItem value="URGENT">דחופה</MenuItem></TextField>
-          <TextField select label="סטטוס" value={filters.status} onChange={(event) => updateFilter('status', event.target.value)}><MenuItem value="">כל הסטטוסים</MenuItem><MenuItem value="OPEN">פתוחה</MenuItem><MenuItem value="IN_PROGRESS">בתהליך</MenuItem><MenuItem value="COMPLETED">הושלמה</MenuItem><MenuItem value="DELETED">נמחקה</MenuItem></TextField>
+          <TextField select label="עדיפות" value={filters.priority} onChange={(event) => updateFilter('priority', event.target.value)}><MenuItem value="">כל העדיפויות</MenuItem>{taskPriorities.map((option) => <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>)}</TextField>
+          <TextField select label="סטטוס" value={filters.status} onChange={(event) => updateFilter('status', event.target.value)}><MenuItem value="">כל הסטטוסים</MenuItem>{taskStatuses.map((option) => <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>)}</TextField>
           <TextField label="מתאריך" type="date" value={filters.fromDate} onChange={(event) => updateFilter('fromDate', event.target.value)} InputLabelProps={{ shrink: true }} />
           <TextField label="עד תאריך" type="date" value={filters.toDate} onChange={(event) => updateFilter('toDate', event.target.value)} InputLabelProps={{ shrink: true }} />
           <Button startIcon={<Clear />} onClick={clearFilters} disabled={!Object.values(filters).some(Boolean)}>ניקוי מסננים</Button>
@@ -201,18 +236,19 @@ const TasksList = ({ user }) => {
         {filteredTasks.map((item) => (
           <Paper key={item.id} elevation={1} sx={{ p: 2, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 2 }}>
             <Box sx={{ flex: 1 }}>
-              <Typography fontWeight="bold">{item.title}</Typography>
-              <Typography variant="body2" color="text.secondary">מזהה: {item.id} | לקוח: {customers.find((customer) => customer.id === item.customerId)?.fullName || 'ללא'}</Typography>
-              <Typography variant="body2" color="text.secondary">עדיפות: {{ LOW: 'נמוכה', MEDIUM: 'בינונית', HIGH: 'גבוהה', URGENT: 'דחופה' }[item.priority] || item.priority} | סטטוס: {{ OPEN: 'פתוחה', IN_PROGRESS: 'בתהליך', COMPLETED: 'הושלמה', DELETED: 'נמחקה' }[item.status] || item.status}</Typography>
-              <Typography variant="body2" color="text.secondary">תאריך יעד: {item.dueDate || 'ללא'} | נמחקה: {item.isDeleted ? 'כן' : 'לא'}</Typography>
+              <Typography fontWeight="bold">{item.title || 'ללא כותרת'}</Typography>
+              <Typography variant="body2" color="text.secondary">לקוח: {customers.find((customer) => customer.id === item.customerId)?.fullName || 'ללא'}</Typography>
+              <Typography variant="body2" color="text.secondary">עדיפות: {taskPriorities.find((option) => option.value === item.priority)?.label || item.priority} | סטטוס: {taskStatuses.find((option) => option.value === item.status)?.label || item.status}</Typography>
+              <Typography variant="body2" color="text.secondary">תאריך יעד: {formatDateTime(item.dueDate)} | נמחקה: {item.isDeleted ? 'כן' : 'לא'}</Typography>
               <Typography variant="body2" color="text.secondary">הערות: {item.notes || 'ללא'}</Typography>
               <Stack spacing={0.25} sx={{ mt: 1 }}>
                 {(item.subtasks || []).map((subtask, subtaskIndex) => (
                   <Box key={`${item.id}-subtask-${subtaskIndex}`} sx={{ display: 'flex', alignItems: 'center' }}>
                     <Checkbox size="small" checked={Boolean(subtask.completed)} onChange={() => handleToggleSubtask(item, subtaskIndex)} />
                     <Box sx={{ flex: 1 }}>
-                      <Typography variant="body2" sx={{ textDecoration: subtask.completed ? 'line-through' : 'none' }}>{subtask.title} | התחלה: {subtask.startDate || 'ללא'} | סיום: {subtask.dueDate || 'ללא'}</Typography>
-                      {includeSubtaskTimers && <Typography variant="caption" color="text.secondary">טיימר: {{ PAUSED: 'מושהה', RUNNING: 'פעיל', COMPLETED: 'הושלם' }[subtask.status] || 'מושהה'} | זמן כולל: {subtask.totalDuration || 0} שניות</Typography>}
+                      <Typography variant="body2" sx={{ textDecoration: subtask.completed ? 'line-through' : 'none' }}>{subtaskTypes.find((option) => option.value === subtask.type)?.label || subtask.title} | התחלה: {formatDateTime(subtask.startDate)} | סיום: {formatDateTime(subtask.dueDate)}</Typography>
+                      {subtask.notes && <Typography variant="caption" color="text.secondary">הערה: {subtask.notes}</Typography>}
+                      {includeSubtaskTimers && <Typography variant="caption" color="text.secondary">טיימר: {{ PAUSED: 'מושהה', RUNNING: 'פעיל', COMPLETED: 'הושלם' }[subtask.status] || 'מושהה'} | זמן כולל: {formatDuration(getSubtaskDuration(subtask))}</Typography>}
                     </Box>
                     {includeSubtaskTimers && <Box>
                       {subtask.status !== 'RUNNING' && subtask.status !== 'COMPLETED' && <IconButton size="small" color="success" aria-label={subtask.status === 'PAUSED' && subtask.sessions?.length ? 'המשך טיימר' : 'הפעל טיימר'} onClick={() => handleSubtaskTimer(item, subtaskIndex, 'start')}><PlayArrow /></IconButton>}
@@ -225,35 +261,39 @@ const TasksList = ({ user }) => {
                 <Button size="small" startIcon={<Add />} onClick={() => openAddSubtask(item)} disabled={item.status === 'COMPLETED'} sx={{ alignSelf: 'flex-start' }}>הוספת משימת משנה</Button>
               </Stack>
             </Box>
-            <Box><IconButton color="primary" onClick={() => openEdit(item)}><Edit /></IconButton><IconButton color="error" onClick={() => handleDelete(item.id)}><Delete /></IconButton></Box>
+            <Box sx={{ display: 'flex', gap: 0.5 }}><IconButton color="primary" aria-label="עריכת משימה" onClick={() => openEdit(item)}><Edit /></IconButton><IconButton color="error" aria-label="מחיקת משימה" onClick={() => handleDelete(item.id)}><Delete /></IconButton></Box>
           </Paper>
         ))}
       </Stack>
-      <Fab color="primary" aria-label="add task" onClick={openAdd} sx={{ position: 'fixed', bottom: 32, right: 32 }}><Add /></Fab>
+      <Fab color="primary" aria-label="הוספת משימה" startIcon={<Add />} onClick={openAdd} sx={{ position: 'fixed', bottom: 32, right: 32 }}>הוספת משימה</Fab>
       <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm">
         <Box component="form" onSubmit={handleSubmit}>
           <DialogTitle>{editingId ? 'עריכת משימה' : 'הוספת משימה'}</DialogTitle>
           <DialogContent sx={{ display: 'grid', gap: 2, pt: 2 }}>
-            <TextField select name="customerId" label="לקוח" value={task.customerId} onChange={handleChange}>
+            <TextField select name="customerId" label="לקוח" value={task.customerId} onChange={handleChange} required={taskRequired.includes('customerId')}>
               <MenuItem value="">ללא לקוח</MenuItem>
               {availableCustomers.map((item) => <MenuItem key={item.id} value={item.id}>{item.fullName}</MenuItem>)}
               <QuickCreateCustomerOption onClick={() => setQuickCreateCustomerOpen(true)} />
             </TextField>
-            <TextField name="title" label="כותרת" value={task.title} onChange={handleChange} required />
-            <TextField select name="priority" label="עדיפות" value={task.priority} onChange={handleChange}><MenuItem value="LOW">נמוכה</MenuItem><MenuItem value="MEDIUM">בינונית</MenuItem><MenuItem value="HIGH">גבוהה</MenuItem><MenuItem value="URGENT">דחופה</MenuItem></TextField>
-            <TextField select name="status" label="סטטוס" value={task.status} onChange={handleChange}><MenuItem value="OPEN">פתוחה</MenuItem><MenuItem value="IN_PROGRESS">בתהליך</MenuItem><MenuItem value="COMPLETED">הושלמה</MenuItem><MenuItem value="DELETED">נמחקה</MenuItem></TextField>
+            <TextField name="title" label="כותרת" value={task.title} onChange={handleChange} required={taskTitleRequired} />
+            <TextField select name="priority" label="עדיפות" value={task.priority} onChange={handleChange}>{taskPriorities.map((option) => <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>)}</TextField>
+            <TextField select name="status" label="סטטוס" value={task.status} onChange={handleChange}>{taskStatuses.map((option) => <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>)}</TextField>
             <TextField name="dueDate" type="datetime-local" label="תאריך יעד" value={task.dueDate || ''} onChange={handleChange} InputLabelProps={{ shrink: true }} required />
-            <TextField name="notes" label="הערות" value={task.notes || ''} onChange={handleChange} multiline rows={3} />
+            <TextField name="notes" label="הערות" value={task.notes || ''} onChange={handleChange} multiline rows={3} required={taskRequired.includes('notes')} />
           </DialogContent>
           <DialogActions><Button onClick={() => setOpen(false)}>ביטול</Button><Button type="submit" variant="contained">שמירה</Button></DialogActions>
         </Box>
       </Dialog>
-      <QuickCreateCustomer open={quickCreateCustomerOpen} onClose={() => setQuickCreateCustomerOpen(false)} onCreated={handleCustomerCreated} />
+      <QuickCreateCustomer open={quickCreateCustomerOpen} onClose={() => setQuickCreateCustomerOpen(false)} onCreated={handleCustomerCreated} picklists={picklists} user={user} />
       <Dialog open={subtaskDialogOpen} onClose={() => setSubtaskDialogOpen(false)} fullWidth maxWidth="sm">
         <Box component="form" onSubmit={handleAddSubtask}>
           <DialogTitle>הוספת משימת משנה</DialogTitle>
           <DialogContent sx={{ pt: 2 }}>
-            <TextField autoFocus fullWidth name="subtaskTitle" label="כותרת" value={subtaskTitle} onChange={(event) => setSubtaskTitle(event.target.value)} required />
+            <TextField autoFocus fullWidth select name="subtaskType" label="סוג משימה" value={subtaskType} onChange={(event) => setSubtaskType(event.target.value)} required={subtaskRequired.includes('type')}>
+              {!subtaskRequired.includes('type') && <MenuItem value="">ללא סוג</MenuItem>}
+              {subtaskTypes.map((option) => <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>)}
+            </TextField>
+            <TextField fullWidth name="subtaskNotes" label="הערה" value={subtaskNotes} onChange={(event) => setSubtaskNotes(event.target.value)} multiline minRows={2} maxRows={5} required={subtaskRequired.includes('notes')} sx={{ mt: 2 }} />
             <TextField fullWidth name="subtaskStartDate" type="datetime-local" label="תאריך התחלה" value={subtaskStartDate} onChange={(event) => setSubtaskStartDate(event.target.value)} inputProps={{ min: localDateTime(nextMinute()), max: selectedTask?.dueDate || undefined }} InputLabelProps={{ shrink: true }} required sx={{ mt: 2 }} />
             <TextField fullWidth name="subtaskDueDate" type="datetime-local" label="תאריך סיום" value={subtaskDueDate} onChange={(event) => setSubtaskDueDate(event.target.value)} inputProps={{ min: subtaskStartDate || localDateTime(nextMinute()), max: selectedTask?.dueDate || undefined }} InputLabelProps={{ shrink: true }} required sx={{ mt: 2 }} />
           </DialogContent>

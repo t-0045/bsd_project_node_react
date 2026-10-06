@@ -17,13 +17,12 @@ const TaskSchema = new mongoose.Schema({
     },
     title: {
         type: String,
-        required: true,
+        default: '',
         trim: true
     },
     priority: {
         type: String,
-        required: true,
-        enum: ['LOW', 'MEDIUM', 'HIGH', 'URGENT']
+        required: true
     },
     dueDate: {
         type: String,
@@ -35,8 +34,7 @@ const TaskSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        required: true,
-        enum: ['OPEN', 'IN_PROGRESS', 'COMPLETED', 'DELETED']
+        required: true
     },
     subtasks: {
         type: [SubtaskModel.schema],

@@ -1,7 +1,6 @@
 import { Outlet } from "react-router-dom"
 
-// יבואי MUI
-import { Box, Container } from "@mui/material"
+import { Box, Container } from "./PrimeUI"
 import Header from "./Header"
 
 const Layout = ({ user, onLogout }) => {

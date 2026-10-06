@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 
-// יבואי MUI
-import { AccessTime, Event, Pause, People, Stop, TaskAlt } from "@mui/icons-material"
-import { Alert, Box, Button, Card, CardContent, CircularProgress, Grid, Paper, Stack, Typography } from "@mui/material"
+import { AccessTime, Event, Pause, People, Stop, TaskAlt, Alert, Box, Button, Card, CardContent, CircularProgress, Grid, Paper, Stack, Typography } from "../Shared/PrimeUI"
 import { changeSubtaskTimerStatus, getAppointments, getCustomers, getTasks } from "../../api"
+import { formatDateTime } from '../../dateFormat'
 
-const Dashboard = ({ user }) => {
+const Dashboard = ({ user, picklists }) => {
   const includeSubtaskTimers = user?.includeSubtaskTimers !== false
+  const taskStatuses = picklists?.taskStatus || []
+  const taskPriorities = picklists?.taskPriority || []
   const [data, setData] = useState({ customers: [], tasks: [], appointments: [] })
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
@@ -136,8 +137,8 @@ const Dashboard = ({ user }) => {
             <Stack spacing={1}>
               {visibleTasks.length ? visibleTasks.map((item) => (
                 <Box key={item.id} sx={{ p: 1.5, bgcolor: 'action.hover', borderRadius: 1 }}>
-                  <Typography component={Link} to={`/tasks?taskId=${item.id}`} fontWeight="bold" color="primary" sx={{ textDecoration: 'none' }}>{item.title}</Typography>
-                  <Typography variant="body2" color="text.secondary">{{ LOW: 'נמוכה', MEDIUM: 'בינונית', HIGH: 'גבוהה', URGENT: 'דחופה' }[item.priority] || item.priority} | {{ OPEN: 'פתוחה', IN_PROGRESS: 'בתהליך', COMPLETED: 'הושלמה', DELETED: 'נמחקה' }[item.status] || item.status}</Typography>
+                  <Typography component={Link} to={`/tasks?taskId=${item.id}`} fontWeight="bold" color="primary" sx={{ textDecoration: 'none' }}>{item.title || 'ללא כותרת'}</Typography>
+                  <Typography variant="body2" color="text.secondary">{taskPriorities.find((option) => option.value === item.priority)?.label || item.priority} | {taskStatuses.find((option) => option.value === item.status)?.label || item.status}</Typography>
                 </Box>
               )) : <Typography color="text.secondary">אין משימות פתוחות</Typography>}
             </Stack>
@@ -158,7 +159,7 @@ const Dashboard = ({ user }) => {
               {visibleAppointments.length ? visibleAppointments.map((item) => (
                 <Box key={item.id} sx={{ p: 1.5, bgcolor: 'action.hover', borderRadius: 1 }}>
                   <Typography component={Link} to={`/appointments?appointmentId=${item.id}`} fontWeight="bold" color="primary" sx={{ textDecoration: 'none' }}>{item.title}</Typography>
-                  <Typography variant="body2" color="text.secondary">{item.startTime}</Typography>
+                  <Typography variant="body2" color="text.secondary">{formatDateTime(item.startTime)}</Typography>
                 </Box>
               )) : <Typography color="text.secondary">אין פגישות {appointmentView === 'today' ? 'להיום' : appointmentView === 'tomorrow' ? 'למחר' : 'בשבוע הקרוב'}</Typography>}
             </Stack>

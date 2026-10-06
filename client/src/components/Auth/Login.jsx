@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { Alert, Box, Button, Card, CardContent, Container, Tab, Tabs, TextField, Typography } from "@mui/material"
+import { Alert, Box, Button, Card, CardContent, Container, Tab, Tabs, TextField, Typography } from "../Shared/PrimeUI"
 import { loginUser, registerUser } from "../../api"
 
 const Login = ({ onLogin }) => {
@@ -50,7 +50,7 @@ const Login = ({ onLogin }) => {
 
       const response = await loginUser(form)
       console.log("LOGIN RESPONSE:", response)
-      onLogin(response)
+      await onLogin(response)
       navigate("/")
     } catch (error) {
       console.log("API ERROR:", error)
@@ -62,8 +62,8 @@ const Login = ({ onLogin }) => {
   }
 
   return (
-    <Container maxWidth="sm" sx={{ minHeight: "100vh", display: "flex", alignItems: "center" }}>
-      <Card elevation={1} sx={{ width: "100%" }}>
+    <Container className="auth-page" maxWidth="sm" sx={{ minHeight: "100vh", display: "flex", alignItems: "center" }}>
+      <Card className="auth-card" elevation={1} sx={{ width: "100%" }}>
         <CardContent sx={{ p: { xs: 3, sm: 5 } }}>
           <Typography variant="h4" component="h1" gutterBottom fontWeight="bold" color="primary">
             מנהל העסק

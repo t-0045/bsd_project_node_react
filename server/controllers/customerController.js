@@ -1,6 +1,7 @@
 const resourceController = require("./resourceController")
 const customerModel = require("../models/Customer")
 const userModel = require("../models/User")
+const { getEffectivePicklists } = require('../config/picklists')
 
 const getAllCustomers = resourceController.list(customerModel)
 const getCustomerById = resourceController.get(customerModel)
@@ -9,7 +10,18 @@ const normalizeEmail = (email) => String(email || '').trim().toLowerCase()
 
 const createCustomer = async (req, res) => {
     try {
-        const user = await userModel.findOne({ id: req.user.id }).select('duplicateCustomerFields duplicateCustomerMode').lean()
+        const user = await userModel.findOne({ id: req.user.id }).select('duplicateCustomerFields duplicateCustomerMode picklists requiredFields').lean()
+        const customerStatusValues = getEffectivePicklists(user?.picklists).customerStatus.map((option) => option.value)
+        if (!customerStatusValues.includes(req.body.status)) {
+            return res.status(400).json({ error: 'Invalid status' })
+        }
+        const requiredFields = Object.hasOwn(user?.requiredFields || {}, 'customer')
+            ? user.requiredFields.customer
+            : ['fullName']
+        const missingRequiredField = requiredFields.find((field) => (
+            req.body[field] === undefined || req.body[field] === null || String(req.body[field]).trim() === ''
+        ))
+        if (missingRequiredField) return res.status(400).json({ error: `${missingRequiredField} is required` })
         const matchingFields = user?.duplicateCustomerFields?.length ? user.duplicateCustomerFields : ['phone', 'email']
         const duplicateMode = user?.duplicateCustomerMode || 'WARN'
         const phone = normalizePhone(req.body.phone)

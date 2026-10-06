@@ -2,6 +2,7 @@ const resourceController = require('./resourceController')
 const taskModel = require('../models/Task')
 const customerModel = require('../models/Customer')
 const userModel = require('../models/User')
+const { getEffectivePicklists } = require('../config/picklists')
 
 const validateTaskDates = async (req, res, next) => {
     try {
@@ -51,7 +52,38 @@ const createTask = resourceController.create(taskModel, (body, userId) => ({
     })),
     label: 'Customer'
 })
-const updateTask = resourceController.updateRecord(taskModel, ['userId', 'id', 'isDeleted', 'createdAt'])
+const updateTaskRecord = resourceController.updateRecord(taskModel, ['userId', 'id', 'isDeleted', 'createdAt'])
+const updateTask = async (req, res, next) => {
+    if (Array.isArray(req.body.subtasks)) {
+        try {
+            const user = await userModel.findOne({ id: req.user.id }).select('picklists requiredFields').lean()
+            const allowedTypes = new Set(getEffectivePicklists(user?.picklists).subtaskType.map((option) => option.value))
+            const invalidType = req.body.subtasks.find((subtask) => subtask.type && !allowedTypes.has(subtask.type))
+            if (invalidType) return res.status(400).json({ error: 'Invalid subtask type' })
+
+            const existingTask = await taskModel.findOne({ id: req.params.id, userId: req.user.id }).lean()
+            const existingSubtasks = new Map((existingTask?.subtasks || []).map((subtask) => [
+                `${subtask.type || ''}|${subtask.startDate}|${subtask.dueDate || ''}|${subtask.title}`,
+                subtask
+            ]))
+            const requiredFields = Object.hasOwn(user?.requiredFields || {}, 'subtask')
+                ? user.requiredFields.subtask
+                : ['type']
+            const changedSubtasks = req.body.subtasks.filter((subtask) => {
+                const key = `${subtask.type || ''}|${subtask.startDate}|${subtask.dueDate || ''}|${subtask.title}`
+                const existingSubtask = existingSubtasks.get(key)
+                return !existingSubtask || requiredFields.some((field) => subtask[field] !== existingSubtask[field])
+            })
+            const missingField = changedSubtasks.find((subtask) => requiredFields.some((field) => (
+                subtask[field] === undefined || subtask[field] === null || String(subtask[field]).trim() === ''
+            )))
+            if (missingField) return res.status(400).json({ error: 'Subtask is missing a required type or note' })
+        } catch (error) {
+            return next(error)
+        }
+    }
+    return updateTaskRecord(req, res, next)
+}
 const deleteTask = resourceController.removeRecord(taskModel, true)
 
 const changeSubtaskStatus = (action) => async (req, res) => {

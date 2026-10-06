@@ -14,5 +14,7 @@ router.patch("/profile-image", requireAuth, controller.updateProfileImage)
 router.patch("/password", requireAuth, validateBody(["currentPassword", "newPassword"]), controller.changePassword)
 router.patch("/profile", requireAuth, controller.updatePersonalDetails)
 router.patch("/system-settings", requireAuth, controller.updateSystemSettings)
+router.get("/picklists", requireAuth, controller.getPicklists)
+router.put("/picklists", requireAuth, controller.updatePicklists)
 
 module.exports = router

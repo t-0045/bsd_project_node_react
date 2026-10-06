@@ -12,7 +12,7 @@ const CustomerSchema = new mongoose.Schema({
     },
     fullName: {
         type: String,
-        required: true,
+        default: '',
         trim: true
     },
     phone: {
@@ -27,8 +27,7 @@ const CustomerSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        required: true,
-        enum: ['LEAD', 'ACTIVE', 'INACTIVE']
+        required: true
     },
     notes: {
         type: String,

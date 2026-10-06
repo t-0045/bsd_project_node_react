@@ -1,9 +1,18 @@
 const mongoose = require('mongoose')
 
 const SubtaskSchema = new mongoose.Schema({
+    type: {
+        type: String,
+        default: null
+    },
     title: {
         type: String,
-        required: true,
+        default: '',
+        trim: true
+    },
+    notes: {
+        type: String,
+        default: '',
         trim: true
     },
     startDate: {

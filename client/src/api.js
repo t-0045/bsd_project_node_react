@@ -51,6 +51,16 @@ const updateSystemSettings = async (settings) => {
   return data.user
 }
 
+const getPicklists = async () => {
+  const { data } = await api.get('/auth/picklists')
+  return data.picklists
+}
+
+const updatePicklists = async (picklists) => {
+  const { data } = await api.put('/auth/picklists', { picklists })
+  return data.picklists
+}
+
 const logoutUser = async () => {
   await api.post('/auth/logout')
   localStorage.removeItem('accessToken')
@@ -118,7 +128,7 @@ const updateAppointment = async (id, appointment) => {
 const deleteAppointment = async (id) => api.delete(`/appointments/${id}`)
 
 export {
-  loginUser, registerUser, verifyEmail, getCurrentUser, updateProfileImage, changePassword, updatePersonalDetails, updateSystemSettings, logoutUser, getHealth,
+  loginUser, registerUser, verifyEmail, getCurrentUser, updateProfileImage, changePassword, updatePersonalDetails, updateSystemSettings, getPicklists, updatePicklists, logoutUser, getHealth,
   getCustomers, createCustomer, updateCustomer, deleteCustomer,
   getTasks, createTask, updateTask, deleteTask, changeSubtaskTimerStatus,
   getAppointments, createAppointment, updateAppointment, deleteAppointment,
