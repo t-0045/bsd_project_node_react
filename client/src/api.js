@@ -1,7 +1,7 @@
 import axios from "axios"
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:2604/api',
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:1234/api',
   withCredentials: true,
 })
 
@@ -29,6 +29,25 @@ const verifyEmail = async (email, token) => {
 
 const getCurrentUser = async () => {
   const { data } = await api.get('/auth/me')
+  return data.user
+}
+
+const updateProfileImage = async (profileImage) => {
+  const { data } = await api.patch('/auth/profile-image', { profileImage })
+  return data.user
+}
+
+const changePassword = async (currentPassword, newPassword) => {
+  await api.patch('/auth/password', { currentPassword, newPassword })
+}
+
+const updatePersonalDetails = async (details) => {
+  const { data } = await api.patch('/auth/profile', details)
+  return data.user
+}
+
+const updateSystemSettings = async (settings) => {
+  const { data } = await api.patch('/auth/system-settings', settings)
   return data.user
 }
 
@@ -99,7 +118,7 @@ const updateAppointment = async (id, appointment) => {
 const deleteAppointment = async (id) => api.delete(`/appointments/${id}`)
 
 export {
-  loginUser, registerUser, verifyEmail, getCurrentUser, logoutUser, getHealth,
+  loginUser, registerUser, verifyEmail, getCurrentUser, updateProfileImage, changePassword, updatePersonalDetails, updateSystemSettings, logoutUser, getHealth,
   getCustomers, createCustomer, updateCustomer, deleteCustomer,
   getTasks, createTask, updateTask, deleteTask, changeSubtaskTimerStatus,
   getAppointments, createAppointment, updateAppointment, deleteAppointment,

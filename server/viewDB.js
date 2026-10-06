@@ -9,7 +9,7 @@ const viewMongoDB = async () => {
         const db = mongoose.connection.db
         const collections = await db.listCollections().toArray()
         console.log('📦 Collections in database:')
-        collections.forEach(c => console.log(`  - ${c.name}`))
+        collections.forEach(c => console.log(` - ${c.name}`))
 
         for (const collection of collections) {
             const coll = db.collection(collection.name)

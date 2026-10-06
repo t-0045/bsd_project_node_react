@@ -4,10 +4,10 @@ import { Link } from "react-router-dom"
 // יבואי MUI
 import { AccessTime, Event, Pause, People, Stop, TaskAlt } from "@mui/icons-material"
 import { Alert, Box, Button, Card, CardContent, CircularProgress, Grid, Paper, Stack, Typography } from "@mui/material"
-import { changeSubtaskTimerStatus, getAppointments, getCustomers, getHealth, getTasks } from "../../api"
+import { changeSubtaskTimerStatus, getAppointments, getCustomers, getTasks } from "../../api"
 
 const Dashboard = ({ user }) => {
-  const [apiStatus, setApiStatus] = useState('loading')
+  const includeSubtaskTimers = user?.includeSubtaskTimers !== false
   const [data, setData] = useState({ customers: [], tasks: [], appointments: [] })
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
@@ -19,17 +19,14 @@ const Dashboard = ({ user }) => {
         getCustomers(), getTasks(), getAppointments()
       ])
       setData({ customers, tasks, appointments })
-      setApiStatus('online')
-    } catch (requestError) {
-      setApiStatus('offline')
-      setError(requestError.response?.data?.error || 'לא ניתן לטעון את נתוני הדשבורד')
+    } catch {
+      setError('לא ניתן לטעון את נתוני לוח הבקרה כרגע')
     } finally {
       setIsLoading(false)
     }
   }
 
   useEffect(() => {
-    getHealth().catch(() => setApiStatus('offline'))
     loadDashboard()
   }, [])
 
@@ -38,8 +35,8 @@ const Dashboard = ({ user }) => {
     try {
       await changeSubtaskTimerStatus(activeTimer.taskId, activeTimer.subtaskIndex, action)
       await loadDashboard()
-    } catch (requestError) {
-      setError(requestError.response?.data?.error || 'לא ניתן לעדכן את הטיימר')
+    } catch {
+      setError('לא ניתן לעדכן את הטיימר כרגע')
     }
   }
 
@@ -47,7 +44,7 @@ const Dashboard = ({ user }) => {
     { label: 'לקוחות', value: data.customers.length, icon: <People color="primary" fontSize="large" /> },
     { label: 'משימות פתוחות', value: data.tasks.filter((item) => item.status !== 'COMPLETED' && item.status !== 'DELETED').length, icon: <TaskAlt color="secondary" fontSize="large" /> },
     { label: 'פגישות', value: data.appointments.filter((item) => item.status === 'SCHEDULED').length, icon: <Event color="success" fontSize="large" /> },
-    { label: 'טיימר פעיל', value: data.tasks.some((task) => (task.subtasks || []).some((subtask) => subtask.status === 'RUNNING')) ? '✓' : '✕', icon: <AccessTime color="warning" fontSize="large" /> },
+    ...(includeSubtaskTimers ? [{ label: 'טיימר פעיל', value: data.tasks.some((task) => (task.subtasks || []).some((subtask) => subtask.status === 'RUNNING')) ? '✓' : '✕', icon: <AccessTime color="warning" fontSize="large" /> }] : []),
   ]
 
   const getDateKey = (date) => {
@@ -71,12 +68,12 @@ const Dashboard = ({ user }) => {
   weekEnd.setDate(today.getDate() + 7)
 
   const visibleTasks = data.tasks.filter((item) => item.status !== 'COMPLETED' && item.status !== 'DELETED').slice(0, 5)
-  const activeTimer = data.tasks.flatMap((task) => (task.subtasks || []).map((subtask, subtaskIndex) => ({
+  const activeTimer = includeSubtaskTimers ? data.tasks.flatMap((task) => (task.subtasks || []).map((subtask, subtaskIndex) => ({
     ...subtask,
     taskTitle: task.title,
     taskId: task.id,
     subtaskIndex
-  }))).find((subtask) => subtask.status === 'RUNNING')
+  }))).find((subtask) => subtask.status === 'RUNNING') : null
   const visibleAppointments = data.appointments
     .filter((item) => item.status === 'SCHEDULED')
     .filter((item) => {
@@ -94,10 +91,6 @@ const Dashboard = ({ user }) => {
       <Typography variant="h4" component="h1" gutterBottom fontWeight="bold" color="primary">
         לוח בקרה
       </Typography>
-      <Typography color="text.secondary" sx={{ mb: 4 }}>{user.businessName}</Typography>
-      {apiStatus === 'loading' && <CircularProgress size={24} />}
-      {apiStatus === 'online' && <Alert severity="success" sx={{ mb: 3 }}>החיבור לשרת פעיל</Alert>}
-      {apiStatus === 'offline' && <Alert severity="warning" sx={{ mb: 3 }}>לא ניתן להתחבר כרגע לשרת</Alert>}
       {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
       {isLoading && <Box display="flex" justifyContent="center" sx={{ py: 4 }}><CircularProgress /></Box>}
       <Grid container spacing={3}>
@@ -116,7 +109,7 @@ const Dashboard = ({ user }) => {
         ))}
       </Grid>
       {!isLoading && <Grid container spacing={3} sx={{ mt: 1 }}>
-        <Grid item xs={12}>
+        {includeSubtaskTimers && <Grid item xs={12}>
           <Paper sx={{ p: 3 }}>
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
               <Typography variant="h6" fontWeight="bold">הטיימר הפעיל</Typography>
@@ -133,7 +126,7 @@ const Dashboard = ({ user }) => {
               </Box>
             ) : <Typography color="text.secondary">אין טיימר פעיל</Typography>}
           </Paper>
-        </Grid>
+        </Grid>}
         <Grid item xs={12} md={6}>
           <Paper sx={{ p: 3 }}>
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>

@@ -13,6 +13,27 @@ const UserSchema = new mongoose.Schema({
         trim: true,
         unique: true
     },
+    backupEmails: {
+        type: [{ type: String, lowercase: true, trim: true }],
+        default: []
+    },
+    phoneNumbers: {
+        type: [{ type: String, trim: true }],
+        default: []
+    },
+    includeSubtaskTimers: {
+        type: Boolean,
+        default: true
+    },
+    duplicateCustomerFields: {
+        type: [{ type: String, enum: ['phone', 'email'] }],
+        default: ['phone', 'email']
+    },
+    duplicateCustomerMode: {
+        type: String,
+        enum: ['WARN', 'BLOCK'],
+        default: 'WARN'
+    },
     passwordHash: {
         type: String,
         required: true
@@ -21,6 +42,10 @@ const UserSchema = new mongoose.Schema({
         type: String,
         required: true,
         trim: true
+    },
+    profileImage: {
+        type: String,
+        default: null
     },
     role: {
         type: String,

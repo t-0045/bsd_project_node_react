@@ -55,6 +55,11 @@ const register = async ({ email, password, businessName }) => {
         error.status = 400
         throw error
     }
+    if (typeof password !== 'string' || password.length < 8) {
+        const error = new Error('Password must be at least 8 characters long')
+        error.status = 400
+        throw error
+    }
 
     if (await userModel.findOne({ email: normalizedEmail })) {
         const error = new Error('Email is already registered')
@@ -159,6 +164,23 @@ const logout = async (userId) => {
     await userModel.updateOne({ id: userId }, { $set: { refreshTokenHash: null } })
 }
 
+const changePassword = async (userId, currentPassword, newPassword) => {
+    const user = await userModel.findOne({ id: userId })
+    if (!user || !(await bcrypt.compare(String(currentPassword || ''), user.passwordHash))) {
+        const error = new Error('Current password is incorrect')
+        error.status = 400
+        throw error
+    }
+    if (typeof newPassword !== 'string' || newPassword.length < 8) {
+        const error = new Error('New password must be at least 8 characters long')
+        error.status = 400
+        throw error
+    }
+
+    user.passwordHash = await bcrypt.hash(newPassword, 12)
+    await user.save()
+}
+
 const setRefreshCookie = (response, token) => {
     response.cookie(refreshCookieName, token, {
         httpOnly: true,
@@ -175,6 +197,7 @@ module.exports = {
     verifyEmail,
     refresh,
     logout,
+    changePassword,
     setRefreshCookie,
     publicUser,
     accessSecret

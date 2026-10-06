@@ -5,6 +5,7 @@ import { useSearchParams } from "react-router-dom"
 import { Add, ChevronLeft, ChevronRight, Clear, Delete, Edit, ExpandLess, ExpandMore, Search } from "@mui/icons-material"
 import { Alert, Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, Fab, IconButton, InputAdornment, MenuItem, Paper, Stack, Tab, Tabs, TextField, Typography } from "@mui/material"
 import { createAppointment, deleteAppointment, getAppointments, getCustomers, updateAppointment } from "../../api"
+import QuickCreateCustomer, { QuickCreateCustomerOption } from '../Customer/QuickCreateCustomer'
 
 const emptyAppointment = { customerId: '', title: '', startTime: '', endTime: '', location: '', status: 'SCHEDULED' }
 const dayNames = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת']
@@ -23,6 +24,7 @@ const AppointmentsList = () => {
   const [filters, setFilters] = useState(initialFilters)
   const [editingId, setEditingId] = useState(null)
   const [open, setOpen] = useState(false)
+  const [quickCreateCustomerOpen, setQuickCreateCustomerOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
   const [calendarView, setCalendarView] = useState('week')
@@ -62,7 +64,14 @@ const AppointmentsList = () => {
 
   const openAdd = () => { setAppointment({ ...emptyAppointment, customerId: '' }); setEditingId(null); setOpen(true) }
   const openEdit = (item) => { setAppointment({ ...emptyAppointment, ...item }); setEditingId(item.id); setOpen(true) }
-  const handleChange = ({ target }) => setAppointment({ ...appointment, [target.name]: target.value })
+  const handleChange = ({ target }) => {
+    if (target.value === '__create_customer__') return
+    setAppointment({ ...appointment, [target.name]: target.value })
+  }
+  const handleCustomerCreated = (createdCustomer) => {
+    setCustomers((current) => [...current, createdCustomer])
+    setAppointment((current) => ({ ...current, customerId: createdCustomer.id }))
+  }
   const handleSubmit = async (event) => {
     event.preventDefault()
     try {
@@ -235,9 +244,10 @@ const AppointmentsList = () => {
       </Stack>
       <Fab color="primary" aria-label="add appointment" onClick={openAdd} sx={{ position: 'fixed', bottom: 32, right: 32 }}><Add /></Fab>
       <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm"><Box component="form" onSubmit={handleSubmit}><DialogTitle>{editingId ? 'עריכת פגישה' : 'הוספת פגישה'}</DialogTitle><DialogContent sx={{ display: 'grid', gap: 2, pt: 2 }}>
-        <TextField select name="customerId" label="לקוח" value={appointment.customerId} onChange={handleChange} required>{customers.map((item) => <MenuItem key={item.id} value={item.id}>{item.fullName}</MenuItem>)}</TextField>
+        <TextField select name="customerId" label="לקוח" value={appointment.customerId} onChange={handleChange} required>{customers.map((item) => <MenuItem key={item.id} value={item.id}>{item.fullName}</MenuItem>)}<QuickCreateCustomerOption onClick={() => setQuickCreateCustomerOpen(true)} /></TextField>
         <TextField name="title" label="כותרת" value={appointment.title} onChange={handleChange} required /><TextField name="startTime" type="datetime-local" label="שעת התחלה" value={appointment.startTime} onChange={handleChange} InputLabelProps={{ shrink: true }} required /><TextField name="endTime" type="datetime-local" label="שעת סיום" value={appointment.endTime} onChange={handleChange} InputLabelProps={{ shrink: true }} required /><TextField name="location" label="מיקום" value={appointment.location} onChange={handleChange} /><TextField select name="status" label="סטטוס" value={appointment.status} onChange={handleChange}><MenuItem value="SCHEDULED">מתוכננת</MenuItem><MenuItem value="COMPLETED">הושלמה</MenuItem><MenuItem value="CANCELLED">בוטלה</MenuItem></TextField>
       </DialogContent><DialogActions><Button onClick={() => setOpen(false)}>ביטול</Button><Button type="submit" variant="contained">שמירה</Button></DialogActions></Box></Dialog>
+      <QuickCreateCustomer open={quickCreateCustomerOpen} onClose={() => setQuickCreateCustomerOpen(false)} onCreated={handleCustomerCreated} />
     </Box>
   )
 }

@@ -8,6 +8,7 @@ import VerifyEmail from './components/Auth/VerifyEmail'
 import CustomersList from './components/Customer/CustomersList'
 import TasksList from './components/Task/TasksList'
 import AppointmentsList from './components/Appointment/AppointmentsList'
+import SettingsPage from './components/Shared/SettingsPage'
 import { getCurrentUser } from './api'
 
 // יצירת ערכת נושא (Theme) נקייה ומודרנית
@@ -53,8 +54,9 @@ const App = () => {
           >
             <Route index element={<Dashboard user={user} />} />
             <Route path='customers' element={<CustomersList />} />
-            <Route path='tasks' element={<TasksList />} />
+            <Route path='tasks' element={<TasksList user={user} />} />
             <Route path='appointments' element={<AppointmentsList />} />
+            <Route path='settings' element={<SettingsPage user={user} onUserUpdate={setUser} />} />
           </Route>
           <Route path='*' element={<Navigate to={user ? '/' : '/login'} replace />} />
         </Routes>

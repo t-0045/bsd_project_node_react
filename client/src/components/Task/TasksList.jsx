@@ -9,6 +9,7 @@ import {
   Stack, TextField, Typography
 } from "@mui/material"
 import { changeSubtaskTimerStatus, createTask, deleteTask, getCustomers, getTasks, updateTask } from "../../api"
+import QuickCreateCustomer, { QuickCreateCustomerOption } from '../Customer/QuickCreateCustomer'
 
 const emptyTask = { customerId: '', title: '', priority: 'MEDIUM', status: 'OPEN', dueDate: '', notes: '', subtasks: [] }
 const initialFilters = { text: '', customerId: '', priority: '', status: '', fromDate: '', toDate: '' }
@@ -23,7 +24,8 @@ const nextMinute = () => {
   return date
 }
 
-const TasksList = () => {
+const TasksList = ({ user }) => {
+  const includeSubtaskTimers = user?.includeSubtaskTimers !== false
   const [tasks, setTasks] = useState([])
   const [customers, setCustomers] = useState([])
   const [filters, setFilters] = useState(initialFilters)
@@ -31,6 +33,7 @@ const TasksList = () => {
   const [task, setTask] = useState(emptyTask)
   const [editingId, setEditingId] = useState(null)
   const [open, setOpen] = useState(false)
+  const [quickCreateCustomerOpen, setQuickCreateCustomerOpen] = useState(false)
   const [subtaskDialogOpen, setSubtaskDialogOpen] = useState(false)
   const [selectedTask, setSelectedTask] = useState(null)
   const [subtaskTitle, setSubtaskTitle] = useState('')
@@ -92,7 +95,14 @@ const TasksList = () => {
 
   const openAdd = () => { setTask({ ...emptyTask, customerId: '' }); setEditingId(null); setOpen(true) }
   const openEdit = (selectedTask) => { setTask({ ...emptyTask, ...selectedTask }); setEditingId(selectedTask.id); setOpen(true) }
-  const handleChange = ({ target }) => setTask({ ...task, [target.name]: target.value })
+  const handleChange = ({ target }) => {
+    if (target.value === '__create_customer__') return
+    setTask({ ...task, [target.name]: target.value })
+  }
+  const handleCustomerCreated = (createdCustomer) => {
+    setCustomers((current) => [...current, createdCustomer])
+    setTask((current) => ({ ...current, customerId: createdCustomer.id }))
+  }
 
   const handleSubmit = async (event) => {
     event.preventDefault()
@@ -202,17 +212,17 @@ const TasksList = () => {
                     <Checkbox size="small" checked={Boolean(subtask.completed)} onChange={() => handleToggleSubtask(item, subtaskIndex)} />
                     <Box sx={{ flex: 1 }}>
                       <Typography variant="body2" sx={{ textDecoration: subtask.completed ? 'line-through' : 'none' }}>{subtask.title} | התחלה: {subtask.startDate || 'ללא'} | סיום: {subtask.dueDate || 'ללא'}</Typography>
-                      <Typography variant="caption" color="text.secondary">טיימר: {{ PAUSED: 'מושהה', RUNNING: 'פעיל', COMPLETED: 'הושלם' }[subtask.status] || 'מושהה'} | זמן כולל: {subtask.totalDuration || 0} שניות</Typography>
+                      {includeSubtaskTimers && <Typography variant="caption" color="text.secondary">טיימר: {{ PAUSED: 'מושהה', RUNNING: 'פעיל', COMPLETED: 'הושלם' }[subtask.status] || 'מושהה'} | זמן כולל: {subtask.totalDuration || 0} שניות</Typography>}
                     </Box>
-                    <Box>
+                    {includeSubtaskTimers && <Box>
                       {subtask.status !== 'RUNNING' && subtask.status !== 'COMPLETED' && <IconButton size="small" color="success" aria-label={subtask.status === 'PAUSED' && subtask.sessions?.length ? 'המשך טיימר' : 'הפעל טיימר'} onClick={() => handleSubtaskTimer(item, subtaskIndex, 'start')}><PlayArrow /></IconButton>}
                       {subtask.status === 'RUNNING' && <IconButton size="small" color="warning" aria-label="השהה טיימר" onClick={() => handleSubtaskTimer(item, subtaskIndex, 'pause')}><Pause /></IconButton>}
                       {subtask.status !== 'COMPLETED' && <IconButton size="small" color="error" aria-label="סיים טיימר" onClick={() => handleSubtaskTimer(item, subtaskIndex, 'complete')}><Stop /></IconButton>}
-                    </Box>
+                    </Box>}
                   </Box>
                 ))}
                 <Typography variant="body2" color="text.secondary">משימות משנה: {(item.subtasks || []).length}</Typography>
-                <Button size="small" startIcon={<Add />} onClick={() => openAddSubtask(item)} sx={{ alignSelf: 'flex-start' }}>הוספת משימת משנה</Button>
+                <Button size="small" startIcon={<Add />} onClick={() => openAddSubtask(item)} disabled={item.status === 'COMPLETED'} sx={{ alignSelf: 'flex-start' }}>הוספת משימת משנה</Button>
               </Stack>
             </Box>
             <Box><IconButton color="primary" onClick={() => openEdit(item)}><Edit /></IconButton><IconButton color="error" onClick={() => handleDelete(item.id)}><Delete /></IconButton></Box>
@@ -227,6 +237,7 @@ const TasksList = () => {
             <TextField select name="customerId" label="לקוח" value={task.customerId} onChange={handleChange}>
               <MenuItem value="">ללא לקוח</MenuItem>
               {availableCustomers.map((item) => <MenuItem key={item.id} value={item.id}>{item.fullName}</MenuItem>)}
+              <QuickCreateCustomerOption onClick={() => setQuickCreateCustomerOpen(true)} />
             </TextField>
             <TextField name="title" label="כותרת" value={task.title} onChange={handleChange} required />
             <TextField select name="priority" label="עדיפות" value={task.priority} onChange={handleChange}><MenuItem value="LOW">נמוכה</MenuItem><MenuItem value="MEDIUM">בינונית</MenuItem><MenuItem value="HIGH">גבוהה</MenuItem><MenuItem value="URGENT">דחופה</MenuItem></TextField>
@@ -237,6 +248,7 @@ const TasksList = () => {
           <DialogActions><Button onClick={() => setOpen(false)}>ביטול</Button><Button type="submit" variant="contained">שמירה</Button></DialogActions>
         </Box>
       </Dialog>
+      <QuickCreateCustomer open={quickCreateCustomerOpen} onClose={() => setQuickCreateCustomerOpen(false)} onCreated={handleCustomerCreated} />
       <Dialog open={subtaskDialogOpen} onClose={() => setSubtaskDialogOpen(false)} fullWidth maxWidth="sm">
         <Box component="form" onSubmit={handleAddSubtask}>
           <DialogTitle>הוספת משימת משנה</DialogTitle>

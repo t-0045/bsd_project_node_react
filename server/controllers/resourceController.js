@@ -35,95 +35,95 @@ const validateEnums = (model, body) => {
 }
 
 const list = (model) => {
-    return async (request, response) => {
+    return async (req, res) => {
         try {
-            response.json(await listOwned(model, request.user.id))
+            res.json(await listOwned(model, req.user.id))
         } catch (error) {
             console.error('List error:', error)
-            response.status(500).json({ error: 'Failed to fetch records' })
+            res.status(500).json({ error: 'Failed to fetch records' })
         }
     }
 }
 
 const get = (model) => {
-    return async (request, response) => {
+    return async (req, res) => {
         try {
-            const record = await findOwned(model, request.params.id, request.user.id)
+            const record = await findOwned(model, req.params.id, req.user.id)
             if (!record) {
-                return response.status(404).send('Not found')
+                return res.status(404).send('Not found')
             }
-            response.json(record)
+            res.json(record)
         } catch (error) {
             console.error('Get error:', error)
-            response.status(500).json({ error: 'Failed to fetch record' })
+            res.status(500).json({ error: 'Failed to fetch record' })
         }
     }
 }
 
 const create = (model, buildRecord, relation) => {
-    return async (request, response) => {
+    return async (req, res) => {
         try {
-            const enumError = validateEnums(model, request.body)
+            const enumError = validateEnums(model, req.body)
             if (enumError) {
-                return response.status(400).json({ error: enumError })
+                return res.status(400).json({ error: enumError })
             }
 
-            const relationId = relation && relation.id(request)
-            const relationExists = relationId && await findOwned(relation.collection, relationId, request.user.id)
+            const relationId = relation && relation.id(req)
+            const relationExists = relationId && await findOwned(relation.collection, relationId, req.user.id)
             const relationIsValid = relation && relation.validate
-                ? await relation.validate(relationId, request.user.id)
+                ? await relation.validate(relationId, req.user.id)
                 : relationExists
             if (relationId && !relationIsValid) {
-                return response.status(400).json({ error: `${relation.label} not found` })
+                return res.status(400).json({ error: `${relation.label} not found` })
             }
 
             const record = await model.create({
                 id: crypto.randomUUID(),
-                ...buildRecord(request.body, request.user.id)
+                ...buildRecord(req.body, req.user.id)
             })
-            response.status(201).json(record)
+            res.status(201).json(record)
         } catch (error) {
             console.error('Create error:', error)
-            response.status(500).json({ error: 'Failed to create record' })
+            res.status(500).json({ error: 'Failed to create record' })
         }
     }
 }
 
 const updateRecord = (model, protectedFields) => {
-    return async (request, response) => {
+    return async (req, res) => {
         try {
-            const record = await findOwned(model, request.params.id, request.user.id)
+            const record = await findOwned(model, req.params.id, req.user.id)
             if (!record) {
-                return response.status(404).send('Not found')
+                return res.status(404).send('Not found')
             }
 
-            const enumError = validateEnums(model, request.body)
+            const enumError = validateEnums(model, req.body)
             if (enumError) {
-                return response.status(400).json({ error: enumError })
+                return res.status(400).json({ error: enumError })
             }
 
-            const changes = Object.keys(request.body)
+            const changes = Object.keys(req.body)
                 .filter((field) => !protectedFields.includes(field))
-                .reduce((updates, field) => ({ ...updates, [field]: request.body[field] }), {})
+                .reduce((updates, field) => ({ ...updates, [field]: req.body[field] }), {})
             const updatedRecord = await model.findOneAndUpdate(
                 { id: record.id, userId: record.userId },
                 { $set: changes },
                 { new: true }
             ).lean()
-            response.json(updatedRecord)
+            res.json(updatedRecord)
         } catch (error) {
             console.error('Update error:', error)
-            response.status(500).json({ error: 'Failed to update record' })
+            res.status(500).json({ error: 'Failed to update record' })
         }
     }
 }
 
 const removeRecord = (model, soft = false) => {
-    return async (request, response) => {
+    return async (req, res) => {
         try {
-            const record = await findOwned(model, request.params.id, request.user.id)
+            const record = await findOwned(model, req.params.id, req.user.id)
             if (!record) {
-                return response.status(404).send('Not found')
+                return res.status(404).send('Not found')
             }
 
             const filter = { id: record.id, userId: record.userId }
@@ -132,10 +132,10 @@ const removeRecord = (model, soft = false) => {
             } else {
                 await model.deleteOne(filter)
             }
-            response.send('success')
+            res.send('success')
         } catch (error) {
             console.error('Delete error:', error)
-            response.status(500).json({ error: 'Failed to delete record' })
+            res.status(500).json({ error: 'Failed to delete record' })
         }
     }
 }
