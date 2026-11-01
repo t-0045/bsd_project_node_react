@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { BrowserRouter as Router, Navigate, Route, Routes } from "react-router-dom"
+import { BrowserRouter as Router, Navigate, Route, Routes, useLocation } from "react-router-dom"
 import Layout from './components/Shared/Layout'
 import Dashboard from './components/Dashboard/Dashboard'
 import Login from './components/Auth/Login'
@@ -10,6 +10,26 @@ import AppointmentsList from './components/Appointment/AppointmentsList'
 import SettingsPage from './components/Shared/SettingsPage'
 import { getCurrentUser, getPicklists } from './api'
 import defaultPicklists from './picklists'
+
+const PageTitle = () => {
+  const { pathname } = useLocation()
+  const titles = {
+    '/': 'ראשי',
+    '/customers': 'לקוחות',
+    '/tasks': 'משימות',
+    '/appointments': 'פגישות',
+    '/settings': 'הגדרות משתמש',
+    '/verify-email': 'אימות אימייל',
+  }
+
+  useEffect(() => {
+    if (pathname !== '/login') {
+      document.title = `mannager app | ${titles[pathname] || 'ראשי'}`
+    }
+  }, [pathname])
+
+  return null
+}
 
 const App = () => {
   const [user, setUser] = useState(null)
@@ -36,6 +56,7 @@ const App = () => {
 
   return (
     <Router>
+      <PageTitle />
         <Routes>
           <Route path='/login' element={<Login onLogin={async (currentUser) => {
             const currentPicklists = await getPicklists().catch(() => defaultPicklists)
@@ -50,7 +71,7 @@ const App = () => {
             <Route index element={<Dashboard user={user} picklists={picklists} />} />
             <Route path='customers' element={<CustomersList user={user} picklists={picklists} />} />
             <Route path='tasks' element={<TasksList user={user} picklists={picklists} />} />
-            <Route path='appointments' element={<AppointmentsList user={user} picklists={picklists} />} />
+            <Route path='appointments' element={<AppointmentsList user={user} onUserUpdate={setUser} picklists={picklists} />} />
             <Route path='settings' element={<SettingsPage user={user} onUserUpdate={setUser} picklists={picklists} onPicklistsUpdate={setPicklists} />} />
           </Route>
           <Route path='*' element={<Navigate to={user ? '/' : '/login'} replace />} />

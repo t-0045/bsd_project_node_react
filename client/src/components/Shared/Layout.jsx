@@ -10,14 +10,13 @@ const Layout = ({ user, onLogout }) => {
       sx={{
         display: 'flex',
         flexDirection: 'column',
-        minHeight: '100vh',
-        backgroundColor: 'background.default'
+        minHeight: '100vh'
       }}
     >
       <Header user={user} onLogout={onLogout} />
       <Container
         component="main"
-        maxWidth="lg"
+        maxWidth="xl"
         sx={{
           flexGrow: 1,
           py: 4,

@@ -19,7 +19,8 @@ const loginUser = async (credentials) => {
 
 const registerUser = async (details) => {
   const { data } = await api.post('/auth/register', details)
-  return data
+  localStorage.setItem('accessToken', data.accessToken)
+  return data.user
 }
 
 const verifyEmail = async (email, token) => {

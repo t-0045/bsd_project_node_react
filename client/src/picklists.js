@@ -5,10 +5,10 @@ const defaultPicklists = {
     { value: 'INACTIVE', label: 'לא פעיל', system: true },
   ],
   taskStatus: [
-    { value: 'OPEN', label: 'פתוחה', system: true },
-    { value: 'IN_PROGRESS', label: 'בתהליך', system: true },
-    { value: 'COMPLETED', label: 'הושלמה', system: true },
-    { value: 'DELETED', label: 'נמחקה', system: true },
+    { value: 'OPEN', label: 'פתוחה', color: 'teal', system: true },
+    { value: 'IN_PROGRESS', label: 'בתהליך', color: 'blue', system: true },
+    { value: 'COMPLETED', label: 'הושלמה', color: 'green', system: true },
+    { value: 'DELETED', label: 'נמחקה', color: 'rose', system: true },
   ],
   taskPriority: [
     { value: 'LOW', label: 'נמוכה', system: true },
@@ -25,6 +25,7 @@ const defaultPicklists = {
     { value: 'PHONE_CALL', label: 'שיחת טלפון', system: true },
     { value: 'SUBMIT_DOCUMENT', label: 'הגשת מסמך', system: true },
     { value: 'SEND_EMAIL', label: 'שליחת אימייל', system: true },
+    { value: 'OTHER', label: 'אחר', system: true },
   ],
 }
 

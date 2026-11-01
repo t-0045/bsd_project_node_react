@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { Alert, Box, Button, Card, CardContent, Container, Tab, Tabs, TextField, Typography } from "../Shared/PrimeUI"
 import { loginUser, registerUser } from "../../api"
@@ -15,6 +15,10 @@ const Login = ({ onLogin }) => {
   const [error, setError] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const navigate = useNavigate()
+
+  useEffect(() => {
+    document.title = `mannager app | ${isRegister ? "הרשמה" : "התחברות"}`
+  }, [isRegister])
 
   const handleChange = ({ target }) => {
     setForm((prev) => ({
@@ -40,21 +44,16 @@ const Login = ({ onLogin }) => {
 
     try {
       if (isRegister) {
-        const response = await registerUser(form)
-        console.log("REGISTER RESPONSE:", response)
-        setError("החשבון נוצר בהצלחה. עכשיו באפשרותך להתחבר.")
-        setIsRegister(false)
-        setForm((prev) => ({ ...prev, businessName: "", password: "", confirmPassword: "", email: "" }))
+        const user = await registerUser(form)
+        await onLogin(user)
+        navigate("/")
         return
       }
 
       const response = await loginUser(form)
-      console.log("LOGIN RESPONSE:", response)
       await onLogin(response)
       navigate("/")
     } catch (error) {
-      console.log("API ERROR:", error)
-      console.log("ERROR RESPONSE:", error?.response)
       setError(error?.response?.data?.error || "אירעה שגיאה. נסה שוב.")
     } finally {
       setIsSubmitting(false)
@@ -62,9 +61,9 @@ const Login = ({ onLogin }) => {
   }
 
   return (
-    <Container className="auth-page" maxWidth="sm" sx={{ minHeight: "100vh", display: "flex", alignItems: "center" }}>
+    <Container className="auth-page" style={{ width: "100%", maxWidth: "none", marginInline: 0, boxSizing: "border-box" }} sx={{ minHeight: "100vh", display: "grid" }}>
       <Card className="auth-card" elevation={1} sx={{ width: "100%" }}>
-        <CardContent sx={{ p: { xs: 3, sm: 5 } }}>
+        <CardContent>
           <Typography variant="h4" component="h1" gutterBottom fontWeight="bold" color="primary">
             מנהל העסק
           </Typography>
@@ -108,7 +107,7 @@ const Login = ({ onLogin }) => {
               />
             )}
             <Button type="submit" variant="contained" size="large" disabled={isSubmitting}>
-              {isSubmitting ? "מתחבר..." : isRegister ? "יצירת חשבון" : "התחברות"}
+              {isSubmitting ? isRegister ? "יוצר חשבון..." : "מתחבר..." : isRegister ? "יצירת חשבון" : "התחברות"}
             </Button>
           </Box>
         </CardContent>

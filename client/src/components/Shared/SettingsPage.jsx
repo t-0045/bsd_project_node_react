@@ -1,9 +1,21 @@
 import { useRef, useState } from 'react'
-import { AccountCircle, Add, CloudUpload, DeleteOutline, ExpandMore, Lock, Save, Accordion, AccordionDetails, AccordionSummary, Alert, Avatar, Box, Button, Checkbox, CircularProgress, FormControl, FormControlLabel, FormGroup, FormLabel, MenuItem, Radio, RadioGroup, Stack, Switch, TextField, Typography } from './PrimeUI'
+import { AccountCircle, Add, CloudUpload, DeleteOutline, ExpandMore, Save, Accordion, AccordionDetails, AccordionSummary, Alert, Avatar, Box, Button, Checkbox, CircularProgress, FormControl, FormControlLabel, FormGroup, FormLabel, MenuItem, Radio, RadioGroup, Stack, Switch, TextField, Typography } from './PrimeUI'
 import { changePassword, updatePersonalDetails, updatePicklists, updateProfileImage, updateSystemSettings } from '../../api'
 
 const MAX_IMAGE_SIZE = 2 * 1024 * 1024
 const ALLOWED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp']
+const TASK_STATUS_COLORS = [
+  { id: 'teal', name: 'טורקיז', value: '#dff2ed' },
+  { id: 'blue', name: 'כחול', value: '#e4effb' },
+  { id: 'green', name: 'ירוק', value: '#e7f3df' },
+  { id: 'amber', name: 'צהוב', value: '#fbf2d9' },
+  { id: 'orange', name: 'כתום', value: '#fbe9dc' },
+  { id: 'rose', name: 'ורוד', value: '#f8e5e8' },
+  { id: 'red', name: 'אדום', value: '#f8e2df' },
+  { id: 'violet', name: 'סגול', value: '#eee7f6' },
+  { id: 'slate', name: 'אפור', value: '#e9eef1' },
+  { id: 'cyan', name: 'תכלת', value: '#def1f5' }
+]
 
 const SettingsPage = ({ user, onUserUpdate, picklists, onPicklistsUpdate }) => {
   const fileInputRef = useRef(null)
@@ -14,16 +26,13 @@ const SettingsPage = ({ user, onUserUpdate, picklists, onPicklistsUpdate }) => {
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [passwordError, setPasswordError] = useState('')
-  const [passwordSuccess, setPasswordSuccess] = useState('')
-  const [isChangingPassword, setIsChangingPassword] = useState(false)
   const [businessName, setBusinessName] = useState(user?.businessName || '')
   const [backupEmails, setBackupEmails] = useState(user?.backupEmails || [])
   const [phoneNumbers, setPhoneNumbers] = useState(user?.phoneNumbers || [])
   const [accessTokenDurationMinutes, setAccessTokenDurationMinutes] = useState(user?.accessTokenDurationMinutes || 15)
   const [includeSubtaskTimers, setIncludeSubtaskTimers] = useState(user?.includeSubtaskTimers !== false)
-  const [calendarStartHour, setCalendarStartHour] = useState(user?.calendarStartHour ?? 0)
-  const [calendarEndHour, setCalendarEndHour] = useState(user?.calendarEndHour ?? 24)
+  const [calendarStartHour, setCalendarStartHour] = useState(user?.calendarStartHour ?? 7)
+  const [calendarEndHour, setCalendarEndHour] = useState(user?.calendarEndHour ?? 17)
   const [duplicateCustomerFields, setDuplicateCustomerFields] = useState(user?.duplicateCustomerFields || ['phone', 'email'])
   const [duplicateCustomerMode, setDuplicateCustomerMode] = useState(user?.duplicateCustomerMode || 'WARN')
   const [requiredFields, setRequiredFields] = useState(user?.requiredFields || {
@@ -31,16 +40,7 @@ const SettingsPage = ({ user, onUserUpdate, picklists, onPicklistsUpdate }) => {
     task: ['title'],
     appointment: ['customerId', 'title']
   })
-  const [detailsError, setDetailsError] = useState('')
-  const [detailsSuccess, setDetailsSuccess] = useState('')
-  const [isSavingDetails, setIsSavingDetails] = useState(false)
-  const [systemSettingsError, setSystemSettingsError] = useState('')
-  const [systemSettingsSuccess, setSystemSettingsSuccess] = useState('')
-  const [isSavingSystemSettings, setIsSavingSystemSettings] = useState(false)
   const [editablePicklists, setEditablePicklists] = useState(picklists || {})
-  const [picklistError, setPicklistError] = useState('')
-  const [picklistSuccess, setPicklistSuccess] = useState('')
-  const [isSavingPicklists, setIsSavingPicklists] = useState(false)
 
   const picklistDefinitions = [
     { key: 'customerStatus', title: 'סטטוס לקוח' },
@@ -70,22 +70,6 @@ const SettingsPage = ({ user, onUserUpdate, picklists, onPicklistsUpdate }) => {
       ...current,
       [listKey]: current[listKey].filter((_, index) => index !== optionIndex)
     }))
-  }
-
-  const handlePicklistsSave = async () => {
-    setPicklistError('')
-    setPicklistSuccess('')
-    setIsSavingPicklists(true)
-    try {
-      const updatedPicklists = await updatePicklists(editablePicklists)
-      setEditablePicklists(updatedPicklists)
-      onPicklistsUpdate(updatedPicklists)
-      setPicklistSuccess('רשימות הבחירה נשמרו')
-    } catch (requestError) {
-      setPicklistError(requestError.response?.data?.error || 'שמירת רשימות הבחירה נכשלה')
-    } finally {
-      setIsSavingPicklists(false)
-    }
   }
 
   const handleImageSelect = (event) => {
@@ -118,87 +102,58 @@ const SettingsPage = ({ user, onUserUpdate, picklists, onPicklistsUpdate }) => {
     setIsSaving(true)
     setError('')
     setSuccess('')
+    if (currentPassword || newPassword || confirmPassword) {
+      if (!currentPassword || !newPassword || !confirmPassword) {
+        setError('יש למלא את כל שדות הסיסמה')
+        setIsSaving(false)
+        return
+      }
+      if (newPassword.length < 8) {
+        setError('הסיסמה החדשה חייבת להכיל לפחות 8 תווים')
+        setIsSaving(false)
+        return
+      }
+      if (newPassword !== confirmPassword) {
+        setError('אימות הסיסמה אינו תואם לסיסמה החדשה')
+        setIsSaving(false)
+        return
+      }
+    }
+
     try {
-      const updatedUser = await updateProfileImage(imagePreview || null)
-      onUserUpdate(updatedUser)
-      setImagePreview(updatedUser?.profileImage || '')
-      setSuccess('תמונת הפרופיל עודכנה')
+      const [updatedUser, updatedProfile, updatedSystemSettings, updatedPicklists] = await Promise.all([
+        updatePersonalDetails({ businessName, backupEmails, phoneNumbers, accessTokenDurationMinutes }),
+        updateProfileImage(imagePreview || null),
+        updateSystemSettings({ includeSubtaskTimers, duplicateCustomerFields, duplicateCustomerMode, requiredFields, calendarStartHour, calendarEndHour }),
+        updatePicklists(editablePicklists),
+        currentPassword ? changePassword(currentPassword, newPassword) : Promise.resolve()
+      ])
+      const savedUser = { ...updatedUser, ...updatedSystemSettings, profileImage: updatedProfile?.profileImage || '' }
+      onUserUpdate(savedUser)
+      setBusinessName(savedUser?.businessName || '')
+      setBackupEmails(savedUser?.backupEmails || [])
+      setPhoneNumbers(savedUser?.phoneNumbers || [])
+      setAccessTokenDurationMinutes(savedUser?.accessTokenDurationMinutes || 15)
+      setIncludeSubtaskTimers(savedUser?.includeSubtaskTimers !== false)
+      setCalendarStartHour(savedUser?.calendarStartHour ?? 7)
+      setCalendarEndHour(savedUser?.calendarEndHour ?? 17)
+      setDuplicateCustomerFields(savedUser?.duplicateCustomerFields || ['phone', 'email'])
+      setDuplicateCustomerMode(savedUser?.duplicateCustomerMode || 'WARN')
+      setRequiredFields(savedUser?.requiredFields || { customer: ['fullName'], task: ['title'], appointment: ['customerId', 'title'] })
+      setEditablePicklists(updatedPicklists)
+      onPicklistsUpdate(updatedPicklists)
+      setImagePreview(updatedProfile?.profileImage || '')
+      if (currentPassword) {
+        setCurrentPassword('')
+        setNewPassword('')
+        setConfirmPassword('')
+      }
+      setSuccess('כל השינויים נשמרו בהצלחה')
+      setError('')
     } catch (requestError) {
-      setError(requestError.response?.data?.error || 'שמירת התמונה נכשלה')
+      setError(requestError.response?.data?.error || 'שמירת השינויים נכשלה')
     } finally {
       setIsSaving(false)
-    }
-  }
-
-  const handlePasswordChange = async (event) => {
-    event.preventDefault()
-    setPasswordError('')
-    setPasswordSuccess('')
-
-    if (newPassword.length < 8) {
-      setPasswordError('הסיסמה החדשה חייבת להכיל לפחות 8 תווים')
-      return
-    }
-    if (newPassword !== confirmPassword) {
-      setPasswordError('אימות הסיסמה אינו תואם לסיסמה החדשה')
-      return
-    }
-
-    setIsChangingPassword(true)
-    try {
-      await changePassword(currentPassword, newPassword)
-      setCurrentPassword('')
-      setNewPassword('')
-      setConfirmPassword('')
-      setPasswordSuccess('הסיסמה שונתה בהצלחה')
-    } catch (requestError) {
-      setPasswordError(requestError.response?.data?.error === 'Current password is incorrect'
-        ? 'הסיסמה הנוכחית שגויה'
-        : requestError.response?.data?.error || 'שינוי הסיסמה נכשל')
-    } finally {
-      setIsChangingPassword(false)
-    }
-  }
-
-  const handlePersonalDetailsSave = async (event) => {
-    event.preventDefault()
-    setDetailsError('')
-    setDetailsSuccess('')
-    setIsSavingDetails(true)
-    try {
-      const updatedUser = await updatePersonalDetails({ businessName, backupEmails, phoneNumbers, accessTokenDurationMinutes })
-      onUserUpdate(updatedUser)
-      setBusinessName(updatedUser?.businessName || '')
-      setBackupEmails(updatedUser?.backupEmails || [])
-      setPhoneNumbers(updatedUser?.phoneNumbers || [])
-      setAccessTokenDurationMinutes(updatedUser?.accessTokenDurationMinutes || 15)
-      setDetailsSuccess('הפרטים האישיים נשמרו')
-    } catch (requestError) {
-      setDetailsError(requestError.response?.data?.error || 'שמירת הפרטים נכשלה')
-    } finally {
-      setIsSavingDetails(false)
-    }
-  }
-
-  const handleSystemSettingsSave = async (event) => {
-    event.preventDefault()
-    setSystemSettingsError('')
-    setSystemSettingsSuccess('')
-    setIsSavingSystemSettings(true)
-    try {
-      const updatedUser = await updateSystemSettings({ includeSubtaskTimers, duplicateCustomerFields, duplicateCustomerMode, requiredFields, calendarStartHour, calendarEndHour })
-      onUserUpdate(updatedUser)
-      setIncludeSubtaskTimers(updatedUser?.includeSubtaskTimers !== false)
-      setCalendarStartHour(updatedUser?.calendarStartHour ?? 0)
-      setCalendarEndHour(updatedUser?.calendarEndHour ?? 24)
-      setDuplicateCustomerFields(updatedUser?.duplicateCustomerFields || ['phone', 'email'])
-      setDuplicateCustomerMode(updatedUser?.duplicateCustomerMode || 'WARN')
-      setRequiredFields(updatedUser?.requiredFields || { customer: ['fullName'], task: ['title'], appointment: ['customerId', 'title'] })
-      setSystemSettingsSuccess('הגדרות המערכת נשמרו')
-    } catch (requestError) {
-      setSystemSettingsError(requestError.response?.data?.error || 'שמירת הגדרות המערכת נכשלה')
-    } finally {
-      setIsSavingSystemSettings(false)
     }
   }
 
@@ -215,7 +170,7 @@ const SettingsPage = ({ user, onUserUpdate, picklists, onPicklistsUpdate }) => {
   }
 
   return (
-    <Box>
+    <Box className="settings-page">
       <Typography variant="h4" component="h1" fontWeight="bold" color="primary" sx={{ mb: 1 }}>
         הגדרות משתמש
       </Typography>
@@ -225,7 +180,7 @@ const SettingsPage = ({ user, onUserUpdate, picklists, onPicklistsUpdate }) => {
           <Typography variant="h6" fontWeight="bold">פרטים אישיים</Typography>
         </AccordionSummary>
         <AccordionDetails sx={{ p: { xs: 2, sm: 3 } }}>
-          <Box component="form" onSubmit={handlePersonalDetailsSave} sx={{ maxWidth: 520 }}>
+          <Box sx={{ maxWidth: 520 }}>
             <Stack spacing={2}>
               <TextField label="אימייל ראשי" type="email" value={user?.email || ''} disabled fullWidth />
               <TextField
@@ -304,14 +259,8 @@ const SettingsPage = ({ user, onUserUpdate, picklists, onPicklistsUpdate }) => {
               >
                 הוספת מספר טלפון
               </Button>
-              <Button type="submit" variant="contained" startIcon={isSavingDetails ? <CircularProgress size={18} color="inherit" /> : <Save />} disabled={isSavingDetails} sx={{ alignSelf: 'flex-start' }}>
-                שמירת פרטים
-              </Button>
             </Stack>
           </Box>
-          {detailsError && <Alert severity="error" sx={{ mt: 2 }}>{detailsError}</Alert>}
-          {detailsSuccess && <Alert severity="success" sx={{ mt: 2 }}>{detailsSuccess}</Alert>}
-
           <Accordion disableGutters elevation={0} sx={{ mt: 2, border: 1, borderColor: 'divider' }}>
             <AccordionSummary expandIcon={<ExpandMore />} aria-controls="profile-image-settings-content" id="profile-image-settings-header">
               <Typography fontWeight="bold">תמונת משתמש</Typography>
@@ -339,9 +288,6 @@ const SettingsPage = ({ user, onUserUpdate, picklists, onPicklistsUpdate }) => {
                         הסרת תמונה
                       </Button>
                     )}
-                    <Button variant="contained" startIcon={isSaving ? <CircularProgress size={18} color="inherit" /> : <Save />} onClick={handleSave} disabled={isSaving}>
-                      שמירה
-                    </Button>
                   </Stack>
                   <input
                     ref={fileInputRef}
@@ -352,8 +298,6 @@ const SettingsPage = ({ user, onUserUpdate, picklists, onPicklistsUpdate }) => {
                   />
                 </Box>
               </Stack>
-              {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
-              {success && <Alert severity="success" sx={{ mt: 2 }}>{success}</Alert>}
             </AccordionDetails>
           </Accordion>
 
@@ -362,7 +306,7 @@ const SettingsPage = ({ user, onUserUpdate, picklists, onPicklistsUpdate }) => {
               <Typography fontWeight="bold">שינוי סיסמה</Typography>
             </AccordionSummary>
             <AccordionDetails sx={{ p: { xs: 2, sm: 3 } }}>
-              <Box component="form" onSubmit={handlePasswordChange} sx={{ maxWidth: 440 }}>
+              <Box sx={{ maxWidth: 440 }}>
                 <Stack spacing={2}>
                   <TextField
                     label="סיסמה נוכחית"
@@ -393,91 +337,85 @@ const SettingsPage = ({ user, onUserUpdate, picklists, onPicklistsUpdate }) => {
                     required
                     fullWidth
                   />
-                  <Button type="submit" variant="contained" startIcon={isChangingPassword ? <CircularProgress size={18} color="inherit" /> : <Lock />} disabled={isChangingPassword} sx={{ alignSelf: 'flex-start' }}>
-                    עדכון סיסמה
-                  </Button>
                 </Stack>
               </Box>
-              {passwordError && <Alert severity="error" sx={{ mt: 2 }}>{passwordError}</Alert>}
-              {passwordSuccess && <Alert severity="success" sx={{ mt: 2 }}>{passwordSuccess}</Alert>}
             </AccordionDetails>
           </Accordion>
         </AccordionDetails>
       </Accordion>
 
-      <Accordion disableGutters elevation={1} sx={{ mt: 2 }}>
+      <Accordion className="settings-system-accordion" disableGutters elevation={1} sx={{ mt: 2 }}>
         <AccordionSummary expandIcon={<ExpandMore />} aria-controls="system-settings-content" id="system-settings-header">
           <Typography variant="h6" fontWeight="bold">הגדרות מערכת</Typography>
         </AccordionSummary>
         <AccordionDetails sx={{ p: { xs: 2, sm: 3 } }}>
-          <Box component="form" onSubmit={handleSystemSettingsSave} sx={{ maxWidth: 520 }}>
-            <Stack spacing={2}>
-              <FormControlLabel
+          <Box className="settings-system-form">
+            <Stack className="settings-system-fields" spacing={2}>
+              <FormControlLabel className="settings-timer-option"
                 control={<Switch checked={includeSubtaskTimers} onChange={(event) => setIncludeSubtaskTimers(event.target.checked)} />}
                 label="כלול טיימרים בתתי־משימות"
               />
-              <Typography variant="body2" fontWeight="medium">טווח שעות ברירת מחדל בלוח הפגישות</Typography>
-              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ maxWidth: 440 }}>
+              <Box className="settings-hours-group">
+                <Typography variant="body2" fontWeight="medium">טווח שעות ברירת מחדל בלוח הפגישות</Typography>
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
                 <TextField select label="משעה" value={calendarStartHour} onChange={(event) => setCalendarStartHour(Number(event.target.value))} fullWidth>
                   {Array.from({ length: 24 }, (_, hour) => <MenuItem key={hour} value={hour}>{`${String(hour).padStart(2, '0')}:00`}</MenuItem>)}
                 </TextField>
                 <TextField select label="עד שעה" value={calendarEndHour} onChange={(event) => setCalendarEndHour(Number(event.target.value))} fullWidth>
                   {Array.from({ length: 24 - calendarStartHour }, (_, index) => calendarStartHour + index + 1).map((hour) => <MenuItem key={hour} value={hour}>{`${String(hour === 24 ? 0 : hour).padStart(2, '0')}:00${hour === 24 ? ' (למחרת)' : ''}`}</MenuItem>)}
                 </TextField>
-              </Stack>
-              <FormControl component="fieldset">
-                <FormLabel component="legend">זיהוי לקוח כפול לפי</FormLabel>
-                <FormGroup row>
+                </Stack>
+              </Box>
+              <FormControl className="settings-choice-group" component="fieldset">
+                <FormLabel className="settings-group-title" component="legend">זיהוי לקוח כפול לפי</FormLabel>
+                <FormGroup className="settings-option-list" row>
                   <FormControlLabel
+                    className="settings-option"
                     control={<Checkbox checked={duplicateCustomerFields.includes('phone')} onChange={(event) => setDuplicateCustomerFields((current) => event.target.checked ? [...current, 'phone'] : current.filter((field) => field !== 'phone'))} />}
                     label="מספר טלפון"
                   />
                   <FormControlLabel
+                    className="settings-option"
                     control={<Checkbox checked={duplicateCustomerFields.includes('email')} onChange={(event) => setDuplicateCustomerFields((current) => event.target.checked ? [...current, 'email'] : current.filter((field) => field !== 'email'))} />}
                     label="אימייל"
                   />
                 </FormGroup>
               </FormControl>
-              <FormControl component="fieldset">
-                <FormLabel component="legend">פעולה במקרה של לקוח כפול</FormLabel>
-                <RadioGroup row value={duplicateCustomerMode} onChange={(event) => setDuplicateCustomerMode(event.target.value)}>
-                  <FormControlLabel value="WARN" control={<Radio />} label="הצגת התראה" />
-                  <FormControlLabel value="BLOCK" control={<Radio />} label="חסימת יצירה" />
+              <FormControl className="settings-choice-group" component="fieldset">
+                <FormLabel className="settings-group-title" component="legend">פעולה במקרה של לקוח כפול</FormLabel>
+                <RadioGroup className="settings-option-list" row value={duplicateCustomerMode} onChange={(event) => setDuplicateCustomerMode(event.target.value)}>
+                  <FormControlLabel className="settings-option" value="WARN" control={<Radio />} label="הצגת התראה" />
+                  <FormControlLabel className="settings-option" value="BLOCK" control={<Radio />} label="חסימת יצירה" />
                 </RadioGroup>
               </FormControl>
-              <FormControl component="fieldset">
-                <FormLabel component="legend">שדות חובה נוספים</FormLabel>
-                <FormGroup>
-                  <Typography variant="body2" fontWeight="medium" sx={{ mt: 1 }}>לקוחות</Typography>
-                  <FormControlLabel control={<Checkbox checked={requiredFields.customer?.includes('fullName') ?? true} onChange={() => toggleRequiredField('customer', 'fullName')} />} label="שם מלא" />
-                  <FormControlLabel control={<Checkbox checked={requiredFields.customer?.includes('phone') || false} onChange={() => toggleRequiredField('customer', 'phone')} />} label="טלפון" />
-                  <FormControlLabel control={<Checkbox checked={requiredFields.customer?.includes('email') || false} onChange={() => toggleRequiredField('customer', 'email')} />} label="אימייל" />
-                  <FormControlLabel control={<Checkbox checked={requiredFields.customer?.includes('notes') || false} onChange={() => toggleRequiredField('customer', 'notes')} />} label="הערות" />
-                  <Typography variant="body2" fontWeight="medium" sx={{ mt: 1 }}>משימות</Typography>
-                  <FormControlLabel control={<Checkbox checked={requiredFields.task?.includes('title') ?? true} onChange={() => toggleRequiredField('task', 'title')} />} label="כותרת" />
-                  <FormControlLabel control={<Checkbox checked disabled />} label="סטטוס, עדיפות ותאריך יעד (חובה מערכתית)" />
-                  <FormControlLabel control={<Checkbox checked={requiredFields.task?.includes('customerId') || false} onChange={() => toggleRequiredField('task', 'customerId')} />} label="שיוך ללקוח" />
-                  <FormControlLabel control={<Checkbox checked={requiredFields.task?.includes('notes') || false} onChange={() => toggleRequiredField('task', 'notes')} />} label="הערות" />
-                  <Typography variant="body2" fontWeight="medium" sx={{ mt: 1 }}>פגישות</Typography>
-                  <FormControlLabel control={<Checkbox checked={requiredFields.appointment?.includes('title') ?? true} onChange={() => toggleRequiredField('appointment', 'title')} />} label="כותרת" />
-                  <FormControlLabel control={<Checkbox checked disabled />} label="סטטוס ושעת התחלה וסיום (חובה מערכתית)" />
-                  <FormControlLabel control={<Checkbox checked={requiredFields.appointment?.includes('customerId') || false} onChange={() => toggleRequiredField('appointment', 'customerId')} />} label="שיוך ללקוח" />
-                  <FormControlLabel control={<Checkbox checked={requiredFields.appointment?.includes('location') || false} onChange={() => toggleRequiredField('appointment', 'location')} />} label="מיקום" />
-                  <Typography variant="body2" fontWeight="medium" sx={{ mt: 1 }}>תתי־משימות</Typography>
-                  <FormControlLabel control={<Checkbox checked={requiredFields.subtask?.includes('type') ?? true} onChange={() => toggleRequiredField('subtask', 'type')} />} label="סוג משימה" />
-                  <FormControlLabel control={<Checkbox checked={requiredFields.subtask?.includes('notes') || false} onChange={() => toggleRequiredField('subtask', 'notes')} />} label="הערה" />
-                  <FormControlLabel control={<Checkbox checked disabled />} label="תאריך התחלה וסיום (חובה מערכתית)" />
+              <FormControl className="settings-choice-group settings-required-group" component="fieldset">
+                <FormLabel className="settings-group-title" component="legend">שדות חובה נוספים</FormLabel>
+                <FormGroup className="settings-required-options">
+                  <Typography className="settings-subheading" variant="body2" fontWeight="medium">לקוחות</Typography>
+                  <FormControlLabel className="settings-option" control={<Checkbox checked={requiredFields.customer?.includes('fullName') ?? true} onChange={() => toggleRequiredField('customer', 'fullName')} />} label="שם מלא" />
+                  <FormControlLabel className="settings-option" control={<Checkbox checked={requiredFields.customer?.includes('phone') || false} onChange={() => toggleRequiredField('customer', 'phone')} />} label="טלפון" />
+                  <FormControlLabel className="settings-option" control={<Checkbox checked={requiredFields.customer?.includes('email') || false} onChange={() => toggleRequiredField('customer', 'email')} />} label="אימייל" />
+                  <FormControlLabel className="settings-option" control={<Checkbox checked={requiredFields.customer?.includes('notes') || false} onChange={() => toggleRequiredField('customer', 'notes')} />} label="הערות" />
+                  <Typography className="settings-subheading" variant="body2" fontWeight="medium">משימות</Typography>
+                  <FormControlLabel className="settings-option" control={<Checkbox checked={requiredFields.task?.includes('title') ?? true} onChange={() => toggleRequiredField('task', 'title')} />} label="כותרת" />
+                  <FormControlLabel className="settings-option" control={<Checkbox checked disabled />} label="סטטוס, עדיפות ותאריך יעד (חובה מערכתית)" />
+                  <FormControlLabel className="settings-option" control={<Checkbox checked={requiredFields.task?.includes('customerId') || false} onChange={() => toggleRequiredField('task', 'customerId')} />} label="שיוך ללקוח" />
+                  <FormControlLabel className="settings-option" control={<Checkbox checked={requiredFields.task?.includes('notes') || false} onChange={() => toggleRequiredField('task', 'notes')} />} label="הערות" />
+                  <Typography className="settings-subheading" variant="body2" fontWeight="medium">פגישות</Typography>
+                  <FormControlLabel className="settings-option" control={<Checkbox checked={requiredFields.appointment?.includes('title') ?? true} onChange={() => toggleRequiredField('appointment', 'title')} />} label="כותרת" />
+                  <FormControlLabel className="settings-option" control={<Checkbox checked disabled />} label="סטטוס ושעת התחלה וסיום (חובה מערכתית)" />
+                  <FormControlLabel className="settings-option" control={<Checkbox checked={requiredFields.appointment?.includes('customerId') || false} onChange={() => toggleRequiredField('appointment', 'customerId')} />} label="שיוך ללקוח" />
+                  <FormControlLabel className="settings-option" control={<Checkbox checked={requiredFields.appointment?.includes('location') || false} onChange={() => toggleRequiredField('appointment', 'location')} />} label="מיקום" />
+                  <Typography className="settings-subheading" variant="body2" fontWeight="medium">תתי־משימות</Typography>
+                  <FormControlLabel className="settings-option" control={<Checkbox checked={requiredFields.subtask?.includes('type') ?? true} onChange={() => toggleRequiredField('subtask', 'type')} />} label="סוג משימה" />
+                  <FormControlLabel className="settings-option" control={<Checkbox checked={requiredFields.subtask?.includes('notes') || false} onChange={() => toggleRequiredField('subtask', 'notes')} />} label="הערה" />
+                  <FormControlLabel className="settings-option" control={<Checkbox checked disabled />} label="תאריך התחלה וסיום (חובה מערכתית)" />
                 </FormGroup>
               </FormControl>
-              <Button type="submit" variant="contained" startIcon={isSavingSystemSettings ? <CircularProgress size={18} color="inherit" /> : <Save />} disabled={isSavingSystemSettings} sx={{ alignSelf: 'flex-start' }}>
-                שמירת הגדרות מערכת
-              </Button>
             </Stack>
           </Box>
-          {systemSettingsError && <Alert severity="error" sx={{ mt: 2 }}>{systemSettingsError}</Alert>}
-          {systemSettingsSuccess && <Alert severity="success" sx={{ mt: 2 }}>{systemSettingsSuccess}</Alert>}
           <Typography variant="h6" fontWeight="bold" sx={{ mt: 4, mb: 2 }}>ערכי רשימות בחירה</Typography>
-          <Stack spacing={2}>
+          <Box className="settings-picklists-grid">
             {picklistDefinitions.map(({ key, title }) => (
               <Accordion key={key} disableGutters elevation={0} sx={{ border: 1, borderColor: 'divider' }}>
                 <AccordionSummary expandIcon={<ExpandMore />} aria-controls={`${key}-options`} id={`${key}-header`}>
@@ -486,7 +424,7 @@ const SettingsPage = ({ user, onUserUpdate, picklists, onPicklistsUpdate }) => {
                 <AccordionDetails id={`${key}-options`}>
                   <Stack spacing={1}>
                     {(editablePicklists[key] || []).map((option, index) => (
-                      <Stack key={option.value} direction="row" spacing={1} alignItems="center">
+                      <Stack key={option.value} direction="row" spacing={1} alignItems="center" flexWrap="wrap">
                         <TextField
                           label="תווית"
                           value={option.label}
@@ -494,6 +432,16 @@ const SettingsPage = ({ user, onUserUpdate, picklists, onPicklistsUpdate }) => {
                           inputProps={{ maxLength: 60 }}
                           fullWidth
                         />
+                        {key === 'taskStatus' && <Box role="radiogroup" aria-label={`צבע לסטטוס ${option.label}`} sx={{ display: 'flex', gap: 0.75, flex: '0 0 auto' }}>
+                          {TASK_STATUS_COLORS.map((color) => <Button
+                            key={color.id}
+                            type="button"
+                            aria-label={color.name}
+                            aria-pressed={option.color === color.id}
+                            onClick={() => updatePicklistOption(key, index, { color: color.id })}
+                            sx={{ minWidth: 28, width: 28, height: 28, p: 0, borderRadius: '50%', bgcolor: color.value, border: option.color === color.id ? '2px solid #202b35' : '1px solid #b8c4ca', '&:hover': { bgcolor: color.value, filter: 'brightness(0.96)' } }}
+                          />)}
+                        </Box>}
                         <Button
                           aria-label={`מחיקת אפשרות ${option.label}`}
                           color="error"
@@ -512,15 +460,17 @@ const SettingsPage = ({ user, onUserUpdate, picklists, onPicklistsUpdate }) => {
                 </AccordionDetails>
               </Accordion>
             ))}
-            <Button variant="contained" startIcon={isSavingPicklists ? <CircularProgress size={18} color="inherit" /> : <Save />} onClick={handlePicklistsSave} disabled={isSavingPicklists} sx={{ alignSelf: 'flex-start' }}>
-              שמירת רשימות בחירה
-            </Button>
-          </Stack>
-          {picklistError && <Alert severity="error" sx={{ mt: 2 }}>{picklistError}</Alert>}
-          {picklistSuccess && <Alert severity="success" sx={{ mt: 2 }}>{picklistSuccess}</Alert>}
+          </Box>
         </AccordionDetails>
       </Accordion>
 
+      <Box className="settings-save-status" aria-live="polite">
+        {error && <Alert severity="error">{error}</Alert>}
+        {success && <Alert severity="success">{success}</Alert>}
+      </Box>
+      <Button variant="contained" startIcon={isSaving ? <CircularProgress size={18} color="inherit" /> : <Save />} onClick={handleSave} disabled={isSaving} sx={{ alignSelf: 'flex-start' }}>
+        שמירת כל השינויים
+      </Button>
     </Box>
   )
 }

@@ -30,13 +30,27 @@ const UserSchema = new mongoose.Schema({
         type: Number,
         min: 0,
         max: 23,
-        default: 0
+        default: 7
     },
     calendarEndHour: {
         type: Number,
         min: 1,
         max: 24,
-        default: 24
+        default: 17
+    },
+    calendarType: {
+        type: String,
+        enum: ['gregorian', 'hebrew'],
+        default: 'gregorian'
+    },
+    calendarView: {
+        type: String,
+        enum: ['day', 'week', 'month'],
+        default: 'week'
+    },
+    calendarHoursCustomized: {
+        type: Boolean,
+        default: false
     },
     includeSubtaskTimers: {
         type: Boolean,

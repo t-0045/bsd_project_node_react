@@ -21,10 +21,11 @@ const Header = ({ user, onLogout }) => {
         <NavLink to="/appointments">פגישות</NavLink>
       </nav>
       <details className="profile-menu">
-        <summary aria-label="פתיחת הגדרות משתמש">
+        <summary aria-label="פתיחת הגדרות משתמש" onClick={() => navigate('/settings')}>
           {user?.profileImage || user?.avatarUrl || user?.photoUrl
-            ? <img src={user.profileImage || user.avatarUrl || user.photoUrl} alt={user?.businessName || 'פרופיל משתמש'} />
-            : user?.businessName || 'פרופיל משתמש'}
+            ? <img src={user.profileImage || user.avatarUrl || user.photoUrl} alt="תמונת פרופיל" />
+            : <span className="profile-avatar" aria-hidden="true" />}
+          <span className="profile-business-name">{user?.businessName || 'שם העסק'}</span>
         </summary>
         <div className="profile-menu-panel">
           <p>{user?.email || 'לא הוגדר אימייל'}</p>

@@ -10,6 +10,11 @@ const SubtaskSchema = new mongoose.Schema({
         default: '',
         trim: true
     },
+    details: {
+        type: String,
+        default: '',
+        trim: true
+    },
     notes: {
         type: String,
         default: '',

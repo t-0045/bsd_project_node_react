@@ -1,16 +1,4 @@
-import { Children, cloneElement, createContext, isValidElement, useContext } from 'react'
-import { Button as PrimeButton } from 'primereact/button'
-import { Checkbox as PrimeCheckbox } from 'primereact/checkbox'
-import { Dialog as PrimeDialog } from 'primereact/dialog'
-import { Dropdown } from 'primereact/dropdown'
-import { InputText } from 'primereact/inputtext'
-import { InputTextarea } from 'primereact/inputtextarea'
-import { Message } from 'primereact/message'
-import { ProgressSpinner } from 'primereact/progressspinner'
-import { RadioButton } from 'primereact/radiobutton'
-import { SelectButton } from 'primereact/selectbutton'
-import { Avatar as PrimeAvatar } from 'primereact/avatar'
-import { Accordion as PrimeAccordion, AccordionTab } from 'primereact/accordion'
+import { Children, cloneElement, createContext, isValidElement, useContext, useEffect } from 'react'
 
 /* eslint-disable react-refresh/only-export-components */
 
@@ -93,78 +81,89 @@ export const Card = ({ children, sx, className = '', ...props }) => <div classNa
 export const CardContent = ({ children, sx, className = '', ...props }) => <div className={`p-card-content ${responsiveClass(sx) ? 'p-responsive-layout' : ''} ${className}`} style={layoutStyle(sx)} {...cleanProps(props)}>{children}</div>
 export const Typography = ({ component: Component = 'p', children, variant, sx, className = '', ...props }) => <Component className={`${variant ? `text-${variant}` : ''} ${responsiveClass(sx) ? 'p-responsive-layout' : ''} ${className}`} style={layoutStyle(sx)} {...cleanProps(props, ignoredStyleProps)}>{children}</Component>
 
-const iconName = (element) => element?.type?.primeIconName ? `pi pi-${element.type.primeIconName}` : undefined
-export const Button = ({ component: Component = 'button', children, startIcon, endIcon, type = 'button', variant, color, size, ...props }) => {
-  const icon = iconName(startIcon)
-  const severity = color === 'error' ? 'danger' : ['success', 'warning', 'info', 'help', 'secondary', 'contrast'].includes(color) ? color : undefined
-  const buttonProps = {
-    label: typeof children === 'string' || typeof children === 'number' ? String(children) : undefined,
-    icon,
-    iconPos: 'left',
-    severity,
-    outlined: variant === 'outlined',
-    text: variant === 'text',
-    size: size === 'small' || size === 'large' ? size : undefined,
-    type,
-    ...cleanProps(props)
-  }
-  if (Component !== 'button') {
-    return <Component className="p-button p-component" type={type} disabled={props.disabled} aria-label={props['aria-label']} to={props.to} href={props.href}>{startIcon}{children}{endIcon}</Component>
-  }
-  return <PrimeButton {...buttonProps}>{buttonProps.label ? undefined : <>{startIcon}{children}{endIcon}</>}</PrimeButton>
+export const Button = ({ component: Component = 'button', children, startIcon, endIcon, type = 'button', variant = 'text', color = 'primary', size = 'medium', className = '', ...props }) => {
+  const buttonProps = cleanProps(props, ['rounded'])
+  const buttonClassName = ['p-button', `p-button-${variant}`, `p-button-${color}`, `p-button-${size}`, className].filter(Boolean).join(' ')
+  return <Component {...buttonProps} className={buttonClassName} type={Component === 'button' ? type : undefined}>
+    {startIcon && <span className="p-button-icon" aria-hidden="true">{startIcon}</span>}
+    <span className="p-button-label">{children}</span>
+    {endIcon && <span className="p-button-icon" aria-hidden="true">{endIcon}</span>}
+  </Component>
 }
-export const Fab = ({ sx, ...props }) => <Button {...props} style={layoutStyle(sx)} rounded />
-export const IconButton = ({ children, ...props }) => <Button {...props} text>{children}</Button>
+export const Fab = ({ sx, ...props }) => <Button {...props} style={{ ...layoutStyle(sx), ...props.style }} />
+export const IconButton = ({ children, className = '', ...props }) => <Button {...props} className={`p-icon-button ${className}`.trim()}>{children}</Button>
 
-const menuItems = (children) => Children.toArray(children).filter(isValidElement).map((child) => ({
-  label: child.props.children || (child.type.name === 'QuickCreateCustomerOption' ? 'יצירת לקוח חדש' : ''),
-  value: child.props.value || (child.type.name === 'QuickCreateCustomerOption' ? '__create_customer__' : ''),
-  disabled: child.props.disabled
-}))
-
-export const TextField = ({ select, label, children, multiline, inputProps = {}, InputProps, minRows, rows, helperText, ...props }) => {
+export const TextField = ({ select, label, children, multiline, inputProps = {}, InputProps, minRows, rows, helperText, fullWidth = false, sx, style, ...props }) => {
   const valueProps = cleanProps(props, ignoredStyleProps)
+  const controlProps = { ...valueProps, ...inputProps }
+  const options = Children.toArray(children).filter(isValidElement)
+  const wrapperStyle = { width: fullWidth ? '100%' : undefined, ...layoutStyle(sx), ...style }
   const control = select
-    ? <Dropdown {...valueProps} options={menuItems(children)} value={valueProps.value} onChange={(event) => valueProps.onChange?.({ target: { name: valueProps.name, value: event.value } })} className={`${valueProps.className || ''} w-full`} />
+    ? <span className="p-select-wrapper">
+      <select {...valueProps} onChange={valueProps.onChange} style={{ width: '100%', ...(valueProps.style || {}) }}>
+        {options.map((option, index) => {
+          const isQuickCreateOption = option.type.name === 'QuickCreateCustomerOption'
+          return <option key={option.key ?? index} value={isQuickCreateOption ? '__create_customer__' : option.props.value} disabled={option.props.disabled}>{isQuickCreateOption ? 'יצירת לקוח חדש' : option.props.children}</option>
+        })}
+      </select>
+    </span>
     : multiline
-      ? <InputTextarea {...valueProps} {...inputProps} rows={rows || minRows || 2} autoResize />
-      : <InputText {...valueProps} {...inputProps} className={`${valueProps.className || ''} w-full`} />
-  return <label className="p-field"><span>{label}</span>{InputProps?.startAdornment}{control}{helperText && <small>{helperText}</small>}</label>
+      ? <textarea {...controlProps} rows={rows || minRows || 2} style={{ width: '100%', ...(controlProps.style || {}) }} />
+      : <input {...controlProps} style={{ width: '100%', ...(controlProps.style || {}) }} />
+  return <label className="p-field" style={wrapperStyle}><span>{label}</span>{InputProps?.startAdornment}{control}{helperText && <small>{helperText}</small>}</label>
 }
 
 export const MenuItem = ({ children }) => children
 export const InputAdornment = ({ children }) => children
-export const Alert = ({ children, severity = 'info', ...props }) => <Message severity={severity === 'error' ? 'error' : severity === 'success' ? 'success' : 'info'} text={children} {...cleanProps(props, ['sx'])} />
-export const CircularProgress = () => <ProgressSpinner style={{ width: '2rem', height: '2rem' }} strokeWidth="4" />
+export const Alert = ({ children, severity = 'info', ...props }) => <div role={severity === 'error' ? 'alert' : 'status'} {...cleanProps(props, ['sx'])}>{children}</div>
+export const CircularProgress = () => <span role="status" aria-label="טוען">טוען...</span>
 
-export const Dialog = ({ open, onClose, children, maxWidth, ...props }) => <PrimeDialog visible={open} onHide={onClose} modal dismissableMask style={{ width: maxWidth === 'xs' ? 'min(32rem, 95vw)' : 'min(48rem, 95vw)' }} {...cleanProps(props, ['fullWidth'])}>{children}</PrimeDialog>
+export const Dialog = ({ open, onClose, children, maxWidth, ...props }) => {
+  useEffect(() => {
+    if (!open) return undefined
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') onClose?.()
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [open, onClose])
+
+  if (!open) return null
+  return <div className="dialog-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose?.() }}>
+    <section role="dialog" aria-modal="true" style={{ width: maxWidth === 'xs' ? 'min(32rem, 95vw)' : 'min(48rem, 95vw)' }} {...cleanProps(props, ['fullWidth'])}>{children}</section>
+  </div>
+}
 export const DialogTitle = ({ children }) => <h2>{children}</h2>
-export const DialogContent = ({ children, sx, ...props }) => <div className={responsiveClass(sx) ? 'p-responsive-layout' : ''} style={layoutStyle(sx)} {...cleanProps(props)}>{children}</div>
+export const DialogContent = ({ children, sx, ...props }) => <div className={`p-dialog-content ${responsiveClass(sx) ? 'p-responsive-layout' : ''}`} style={layoutStyle(sx)} {...cleanProps(props)}>{children}</div>
 export const DialogActions = ({ children, ...props }) => <div className="p-dialog-footer" {...cleanProps(props)}>{children}</div>
 
 export const Tabs = ({ value, onChange, children, ...props }) => {
   const options = Children.toArray(children).map((child, index) => ({ label: child.props.label, value: child.props.value ?? index }))
-  return <SelectButton value={value} options={options} onChange={(event) => onChange?.(null, event.value)} {...cleanProps(props)} />
+  return <div role="tablist" {...cleanProps(props)}>{options.map((option) => <button key={option.value} type="button" role="tab" aria-selected={value === option.value} onClick={() => onChange?.(null, option.value)}>{option.label}</button>)}</div>
 }
 export const Tab = () => null
 
-export const Accordion = ({ children, ...props }) => {
+export const Accordion = ({ children, sx, className = '', style, ...props }) => {
   const parts = Children.toArray(children)
   const summary = parts.find((child) => child.type === AccordionSummary)
   const details = parts.find((child) => child.type === AccordionDetails)
-  return <PrimeAccordion {...cleanProps(props, ['disableGutters', 'elevation', 'sx'])}>
-    <AccordionTab header={summary?.props.children}>{details?.props.children}</AccordionTab>
-  </PrimeAccordion>
+  return <details className={`p-accordion ${className}`} style={{ ...layoutStyle(sx), ...style }} {...cleanProps(props, ['disableGutters', 'elevation'])}>
+    <summary className="p-accordion-summary">
+      <span>{summary?.props.children}</span>
+      <span className="p-accordion-icon" aria-hidden="true">{summary?.props.expandIcon || <ExpandMore />}</span>
+    </summary>
+    {details && <AccordionDetails {...details.props} />}
+  </details>
 }
 export const AccordionSummary = () => null
-export const AccordionDetails = ({ children }) => children
-export const Avatar = ({ src, alt, children }) => src ? <PrimeAvatar image={src} imageAlt={alt} shape="circle" /> : <PrimeAvatar label={children || alt?.slice(0, 1) || '?'} shape="circle" />
+export const AccordionDetails = ({ children, sx, className = '', ...props }) => <div className={`p-accordion-details ${responsiveClass(sx) ? 'p-responsive-layout' : ''} ${className}`} style={layoutStyle(sx)} {...cleanProps(props)}>{children}</div>
+export const Avatar = ({ src, alt, children }) => src ? <img className="p-avatar" src={src} alt={alt || ''} /> : <span className="p-avatar" role="img" aria-label={alt || 'תמונת פרופיל'}>{children || alt?.slice(0, 1) || '?'}</span>
 
-export const Checkbox = ({ checked, onChange, ...props }) => <PrimeCheckbox checked={checked} onChange={(event) => onChange?.({ target: { checked: event.checked } })} {...cleanProps(props, ['size'])} />
+export const Checkbox = ({ checked, onChange, ...props }) => <input type="checkbox" checked={checked} onChange={(event) => onChange?.({ target: { checked: event.target.checked } })} {...cleanProps(props, ['size'])} />
 export const Switch = (props) => <Checkbox {...props} />
 export const Radio = ({ value, ...props }) => {
   const radio = useContext(RadioContext)
-  return <RadioButton inputId={`${radio?.name}-${value}`} name={radio?.name} value={value} checked={radio?.value === value} onChange={(event) => radio?.onChange?.({ target: { value: event.value } })} {...cleanProps(props)} />
+  return <input type="radio" id={`${radio?.name}-${value}`} name={radio?.name} value={value} checked={radio?.value === value} onChange={(event) => radio?.onChange?.({ target: { value: event.target.value } })} {...cleanProps(props)} />
 }
 export const RadioGroup = ({ value, onChange, children, ...props }) => <RadioContext.Provider value={{ value, onChange, name: props.name || 'radio-group' }}><div {...cleanProps(props)}>{children}</div></RadioContext.Provider>
 export const FormControl = ({ children, ...props }) => <fieldset {...cleanProps(props)}>{children}</fieldset>
@@ -172,10 +171,10 @@ export const FormGroup = ({ children, ...props }) => <div {...cleanProps(props)}
 export const FormLabel = ({ component: Component = 'label', children, ...props }) => <Component {...cleanProps(props)}>{children}</Component>
 export const FormControlLabel = ({ control, label, value, ...props }) => <label {...cleanProps(props)}>{isValidElement(control) ? cloneElement(control, { value }) : control}{label}</label>
 
+const iconGlyphs = { user: '●', envelope: '✉', cog: '⚙', plus: '+', calendar: '▦', trash: '×', pencil: '✎', 'chevron-up': '⌃', 'chevron-down': '⌄', pause: 'Ⅱ', play: '▶', stop: '■', search: '⌕', 'chevron-left': '‹', 'chevron-right': '›', times: '×', clock: '◷', 'check-circle': '✓', upload: '↑', lock: '▣', save: '▣', users: '●●' }
 const icon = (name) => {
-  const PrimeIcon = () => <i className={`pi pi-${name}`} aria-hidden="true" />
-  PrimeIcon.primeIconName = name
-  return PrimeIcon
+  const LocalIcon = () => <span aria-hidden="true">{iconGlyphs[name] || '•'}</span>
+  return LocalIcon
 }
 export const AccountCircle = icon('user')
 export const Email = icon('envelope')

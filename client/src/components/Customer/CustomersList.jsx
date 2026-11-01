@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 
-import { Add, AddTask, CalendarMonth, Clear, Delete, Edit, ExpandLess, ExpandMore, Search, Alert, Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, Fab, IconButton, InputAdornment, MenuItem, Paper, Stack, TextField, Typography } from "../Shared/PrimeUI"
+import { Add, AddTask, CalendarMonth, Clear, Delete, Edit, ExpandLess, ExpandMore, Search, Alert, Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, InputAdornment, MenuItem, Paper, Stack, TextField, Typography } from "../Shared/PrimeUI"
 import { createAppointment, createCustomer, createTask, deleteCustomer, getCustomers, updateCustomer } from "../../api"
 import { formatDateTime } from '../../dateFormat'
 
@@ -135,38 +135,53 @@ const CustomersList = ({ user, picklists }) => {
   }
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Delete this customer?')) return
-    await deleteCustomer(id)
-    fetchCustomers()
+    if (!window.confirm('למחוק את הלקוח?')) return
+    try {
+      await deleteCustomer(id)
+      setOpen(false)
+      setEditingId(null)
+      fetchCustomers()
+    } catch (requestError) {
+      setError(requestError.response?.data?.error || 'מחיקת הלקוח נכשלה')
+    }
   }
 
   if (isLoading) return <Box display="flex" justifyContent="center" alignItems="center" minHeight="50vh"><CircularProgress /></Box>
 
   return (
-    <Box sx={{ position: 'relative' }}>
-      <Typography variant="h4" component="h1" gutterBottom fontWeight="bold" color="primary">לקוחות</Typography>
+    <Box className="customers-page" sx={{ position: 'relative' }}>
+      <Box className="customers-heading">
+        <Box>
+          <Typography variant="h4" component="h1" gutterBottom fontWeight="bold" color="primary">לקוחות</Typography>
+          <Typography className="customers-subtitle" variant="body2" color="text.secondary">ניהול פרטי קשר, מעקב ופעילות</Typography>
+        </Box>
+        <Button className="customers-add-button" variant="contained" startIcon={<Add />} onClick={openAdd}>לקוח חדש</Button>
+      </Box>
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, mb: 2, flexWrap: 'wrap' }}>
-        <Typography variant="h6">חיפוש וסינון לקוחות</Typography>
+      <Box className="customers-content-panel">
+      <Box className="customers-search-heading">
+        <Typography variant="h6">רשימת לקוחות</Typography>
+      </Box>
+      <Box className="customers-search-row" sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
+        <TextField
+          fullWidth
+          label="חיפוש בכל השדות"
+          placeholder="שם, טלפון, אימייל, הערות..."
+          value={filters.text}
+          onChange={(event) => updateFilter('text', event.target.value)}
+          sx={{ backgroundColor: 'background.paper', flex: '1 1 auto', width: 'auto', minWidth: 0 }}
+          InputProps={{ startAdornment: <InputAdornment position="start"><Search color="action" /></InputAdornment> }}
+        />
         <Button
+          className="advanced-search-button"
           variant="outlined"
           startIcon={isAdvancedSearchOpen ? <ExpandLess /> : <ExpandMore />}
           onClick={() => setIsAdvancedSearchOpen((openState) => !openState)}
-          sx={{ minWidth: 180 }}
         >
           {isAdvancedSearchOpen ? 'סגירת חיפוש מתקדם' : 'חיפוש מתקדם'}
         </Button>
+        <Typography className="customer-count" variant="body2" color="text.secondary" sx={{ whiteSpace: 'nowrap', flex: '0 0 auto' }}>{filteredCustomers.length} לקוחות</Typography>
       </Box>
-
-      <TextField
-        fullWidth
-        label="חיפוש בכל השדות"
-        placeholder="שם, טלפון, אימייל, הערות..."
-        value={filters.text}
-        onChange={(event) => updateFilter('text', event.target.value)}
-        sx={{ mb: 2, backgroundColor: 'background.paper' }}
-        InputProps={{ startAdornment: <InputAdornment position="start"><Search color="action" /></InputAdornment> }}
-      />
 
       {isAdvancedSearchOpen && (
         <Box sx={{ mb: 3, p: 2.5, border: '1px solid', borderColor: 'divider', borderRadius: 2, backgroundColor: 'rgba(8, 127, 114, 0.02)' }}>
@@ -188,27 +203,32 @@ const CustomersList = ({ user, picklists }) => {
         </Box>
       )}
 
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>נמצאו {filteredCustomers.length} לקוחות</Typography>
-      <Stack spacing={2} sx={{ mb: 4 }}>
+      <Stack className="customers-list" spacing={0} sx={{ mb: 4 }}>
         {filteredCustomers.map((item) => (
-          <Paper key={item.id} elevation={1} sx={{ p: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Box>
-              <Typography fontWeight="bold">{item.fullName || 'לקוח ללא שם'}</Typography>
-              <Typography variant="body2" color="text.secondary">טלפון: {item.phone || 'ללא'} | אימייל: {item.email || 'ללא'}</Typography>
-              <Typography variant="body2" color="text.secondary">סטטוס: {customerStatuses.find((option) => option.value === item.status)?.label || item.status} | נמחק: {item.isDeleted ? 'כן' : 'לא'}</Typography>
-              <Typography variant="body2" color="text.secondary">הערות: {item.notes || 'ללא'}</Typography>
-              <Typography variant="caption" color="text.secondary">נוצר: {formatDateTime(item.createdAt)} | עודכן: {formatDateTime(item.updatedAt)}</Typography>
+          <Paper key={item.id} className="customer-row" elevation={0}>
+            <Box className="customer-main">
+              <span className="customer-initial" aria-hidden="true">{(item.fullName || '?').trim().charAt(0)}</span>
+              <Box className="customer-identity">
+                <Typography className="customer-name" fontWeight="bold">{item.fullName || 'לקוח ללא שם'}</Typography>
+                <Typography className="customer-contact" variant="body2" color="text.secondary">
+                  {[item.phone, item.email].filter(Boolean).join(' · ') || 'אין פרטי קשר'}
+                </Typography>
+              </Box>
             </Box>
-            <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            <Box className="customer-meta">
+              <span className={`customer-status status-${(item.status || 'unknown').toLowerCase()}`}>{customerStatuses.find((option) => option.value === item.status)?.label || item.status || 'ללא סטטוס'}</span>
+              <Typography className="customer-updated" variant="caption" color="text.secondary">עודכן {formatDateTime(item.updatedAt || item.createdAt)}</Typography>
+            </Box>
+            <Box className="customer-actions">
               <IconButton color="success" aria-label={`הוספת משימה עבור ${item.fullName}`} onClick={() => openActivity('task', item)}><AddTask /></IconButton>
               <IconButton color="primary" aria-label={`הוספת פגישה עבור ${item.fullName}`} onClick={() => openActivity('appointment', item)}><CalendarMonth /></IconButton>
-              <IconButton color="primary" onClick={() => openEdit(item)}><Edit /></IconButton>
-              <IconButton color="error" onClick={() => handleDelete(item.id)}><Delete /></IconButton>
+              <IconButton color="primary" aria-label={`עריכת ${item.fullName}`} onClick={() => openEdit(item)}><Edit /></IconButton>
+              <IconButton color="error" aria-label={`מחיקת ${item.fullName}`} onClick={() => handleDelete(item.id)}><Delete /></IconButton>
             </Box>
           </Paper>
         ))}
       </Stack>
-      <Fab color="primary" aria-label="הוספת לקוח" startIcon={<Add />} onClick={openAdd} sx={{ position: 'fixed', bottom: 32, right: 32 }}>הוספת לקוח</Fab>
+      </Box>
       <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm">
         <Box component="form" onSubmit={handleSubmit}>
           <DialogTitle>{editingId ? 'עריכת לקוח' : 'הוספת לקוח'}</DialogTitle>
@@ -221,7 +241,7 @@ const CustomersList = ({ user, picklists }) => {
             </TextField>
             <TextField name="notes" label="הערות" multiline rows={3} value={customer.notes} onChange={handleChange} required={customerRequired.includes('notes')} />
           </DialogContent>
-          <DialogActions><Button onClick={() => setOpen(false)}>ביטול</Button><Button type="submit" variant="contained">שמירה</Button></DialogActions>
+          <DialogActions>{editingId && <Button color="error" startIcon={<Delete />} onClick={() => handleDelete(editingId)}>מחיקה</Button>}<Button onClick={() => setOpen(false)}>ביטול</Button><Button type="submit" variant="contained">שמירה</Button></DialogActions>
         </Box>
       </Dialog>
       <Dialog open={Boolean(duplicateWarning)} onClose={() => setDuplicateWarning(null)} fullWidth maxWidth="xs">

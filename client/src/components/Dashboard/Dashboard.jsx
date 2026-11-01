@@ -88,18 +88,18 @@ const Dashboard = ({ user, picklists }) => {
     .slice(0, 5)
 
   return (
-    <Box>
+    <Box className="dashboard-page">
       <Typography variant="h4" component="h1" gutterBottom fontWeight="bold" color="primary">
         לוח בקרה
       </Typography>
       {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
       {isLoading && <Box display="flex" justifyContent="center" sx={{ py: 4 }}><CircularProgress /></Box>}
-      <Grid container spacing={3}>
+      <Grid container spacing={2.5}>
         {cards.map((card) => (
           <Grid item xs={12} sm={6} md={3} key={card.label}>
             <Card elevation={1}>
-              <CardContent sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <Box>
+              <CardContent sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: 88 }}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
                   <Typography color="text.secondary">{card.label}</Typography>
                   <Typography variant="h3" sx={{ fontWeight: 700 }}>{card.value}</Typography>
                 </Box>
@@ -109,14 +109,14 @@ const Dashboard = ({ user, picklists }) => {
           </Grid>
         ))}
       </Grid>
-      {!isLoading && <Grid container spacing={3} sx={{ mt: 1 }}>
+      {!isLoading && <Grid container spacing={2.5} sx={{ mt: 2.5 }}>
         {includeSubtaskTimers && <Grid item xs={12}>
-          <Paper sx={{ p: 3 }}>
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+          <Paper sx={{ p: 2.5 }}>
+            <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
               <Typography variant="h6" fontWeight="bold">הטיימר הפעיל</Typography>
             </Box>
             {activeTimer ? (
-              <Box sx={{ p: 1.5, bgcolor: 'action.hover', borderRadius: 1 }}>
+              <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 1 }}>
                 <Typography fontWeight="bold">{activeTimer.title}</Typography>
                 <Typography variant="body2" color="text.secondary">משימה: {activeTimer.taskTitle || 'ללא'}</Typography>
                 <Typography variant="body2" color="text.secondary">משך כולל: {activeTimer.totalDuration || 0} שניות</Typography>
@@ -124,43 +124,43 @@ const Dashboard = ({ user, picklists }) => {
                   <Button variant="outlined" color="warning" startIcon={<Pause />} onClick={() => handleTimerStatus('pause')}>השהיה</Button>
                   <Button variant="contained" color="error" startIcon={<Stop />} onClick={() => handleTimerStatus('complete')}>סיום</Button>
                 </Stack>
-              </Box>
-            ) : <Typography color="text.secondary">אין טיימר פעיל</Typography>}
+              </Paper>
+            ) : <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 1 }}><Typography color="text.secondary">אין טיימר פעיל</Typography></Paper>}
           </Paper>
         </Grid>}
         <Grid item xs={12} md={6}>
-          <Paper sx={{ p: 3 }}>
+          <Paper sx={{ p: 2.5, height: '100%' }}>
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
               <Typography variant="h6" fontWeight="bold">משימות פתוחות</Typography>
               <Button component={Link} to="/tasks" size="small">לכל המשימות</Button>
             </Box>
-            <Stack spacing={1}>
+            <Stack spacing={1.25}>
               {visibleTasks.length ? visibleTasks.map((item) => (
-                <Box key={item.id} sx={{ p: 1.5, bgcolor: 'action.hover', borderRadius: 1 }}>
+                <Paper key={item.id} variant="outlined" sx={{ p: 1.5, borderRadius: 1 }}>
                   <Typography component={Link} to={`/tasks?taskId=${item.id}`} fontWeight="bold" color="primary" sx={{ textDecoration: 'none' }}>{item.title || 'ללא כותרת'}</Typography>
                   <Typography variant="body2" color="text.secondary">{taskPriorities.find((option) => option.value === item.priority)?.label || item.priority} | {taskStatuses.find((option) => option.value === item.status)?.label || item.status}</Typography>
-                </Box>
+                </Paper>
               )) : <Typography color="text.secondary">אין משימות פתוחות</Typography>}
             </Stack>
           </Paper>
         </Grid>
         <Grid item xs={12} md={6}>
-          <Paper sx={{ p: 3 }}>
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+          <Paper sx={{ p: 2.5, height: '100%' }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mb: 2 }}>
               <Typography variant="h6" fontWeight="bold">פגישות קרובות</Typography>
-              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', justifyContent: 'flex-start' }}>
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
                 <Button size="small" variant={appointmentView === 'today' ? 'contained' : 'outlined'} onClick={() => setAppointmentView('today')}>היום</Button>
                 <Button size="small" variant={appointmentView === 'tomorrow' ? 'contained' : 'outlined'} onClick={() => setAppointmentView('tomorrow')}>מחר</Button>
                 <Button size="small" variant={appointmentView === 'week' ? 'contained' : 'outlined'} onClick={() => setAppointmentView('week')}>השבוע הקרוב</Button>
                 <Button component={Link} to="/appointments" size="small">לכל הפגישות</Button>
               </Box>
             </Box>
-            <Stack spacing={1}>
+            <Stack spacing={1.25}>
               {visibleAppointments.length ? visibleAppointments.map((item) => (
-                <Box key={item.id} sx={{ p: 1.5, bgcolor: 'action.hover', borderRadius: 1 }}>
+                <Paper key={item.id} variant="outlined" sx={{ p: 1.5, borderRadius: 1 }}>
                   <Typography component={Link} to={`/appointments?appointmentId=${item.id}`} fontWeight="bold" color="primary" sx={{ textDecoration: 'none' }}>{item.title}</Typography>
                   <Typography variant="body2" color="text.secondary">{formatDateTime(item.startTime)}</Typography>
-                </Box>
+                </Paper>
               )) : <Typography color="text.secondary">אין פגישות {appointmentView === 'today' ? 'להיום' : appointmentView === 'tomorrow' ? 'למחר' : 'בשבוע הקרוב'}</Typography>}
             </Stack>
           </Paper>

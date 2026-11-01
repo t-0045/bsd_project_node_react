@@ -5,10 +5,10 @@ const defaultPicklists = {
         { value: 'INACTIVE', label: 'לא פעיל', system: true }
     ],
     taskStatus: [
-        { value: 'OPEN', label: 'פתוחה', system: true },
-        { value: 'IN_PROGRESS', label: 'בתהליך', system: true },
-        { value: 'COMPLETED', label: 'הושלמה', system: true },
-        { value: 'DELETED', label: 'נמחקה', system: true }
+        { value: 'OPEN', label: 'פתוחה', color: 'teal', system: true },
+        { value: 'IN_PROGRESS', label: 'בתהליך', color: 'blue', system: true },
+        { value: 'COMPLETED', label: 'הושלמה', color: 'green', system: true },
+        { value: 'DELETED', label: 'נמחקה', color: 'rose', system: true }
     ],
     taskPriority: [
         { value: 'LOW', label: 'נמוכה', system: true },
@@ -24,9 +24,12 @@ const defaultPicklists = {
     subtaskType: [
         { value: 'PHONE_CALL', label: 'שיחת טלפון', system: true },
         { value: 'SUBMIT_DOCUMENT', label: 'הגשת מסמך', system: true },
-        { value: 'SEND_EMAIL', label: 'שליחת אימייל', system: true }
+        { value: 'SEND_EMAIL', label: 'שליחת אימייל', system: true },
+        { value: 'OTHER', label: 'אחר', system: true }
     ]
 }
+
+const taskStatusColors = ['teal', 'blue', 'green', 'amber', 'orange', 'rose', 'red', 'violet', 'slate', 'cyan']
 
 const getEffectivePicklists = (picklists = {}) => Object.fromEntries(
     Object.entries(defaultPicklists).map(([key, defaults]) => {
@@ -34,11 +37,16 @@ const getEffectivePicklists = (picklists = {}) => Object.fromEntries(
         const savedByValue = new Map(savedOptions.map((option) => [option.value, option]))
         const mergedDefaults = defaults.map((option) => ({
             ...option,
-            label: savedByValue.get(option.value)?.label || option.label
+            label: savedByValue.get(option.value)?.label || option.label,
+            ...(key === 'taskStatus' ? { color: savedByValue.get(option.value)?.color || option.color } : {})
         }))
-        const customOptions = savedOptions.filter((option) => !defaults.some((item) => item.value === option.value))
+        const customOptions = savedOptions
+            .filter((option) => !defaults.some((item) => item.value === option.value))
+            .map((option, index) => key === 'taskStatus'
+                ? { ...option, color: taskStatusColors.includes(option.color) ? option.color : taskStatusColors[index % taskStatusColors.length] }
+                : option)
         return [key, [...mergedDefaults, ...customOptions]]
     })
 )
 
-module.exports = { defaultPicklists, getEffectivePicklists }
+module.exports = { defaultPicklists, getEffectivePicklists, taskStatusColors }

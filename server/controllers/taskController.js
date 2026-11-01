@@ -2,7 +2,6 @@ const resourceController = require('./resourceController')
 const taskModel = require('../models/Task')
 const customerModel = require('../models/Customer')
 const userModel = require('../models/User')
-const { getEffectivePicklists } = require('../config/picklists')
 
 const validateTaskDates = async (req, res, next) => {
     try {
@@ -57,10 +56,6 @@ const updateTask = async (req, res, next) => {
     if (Array.isArray(req.body.subtasks)) {
         try {
             const user = await userModel.findOne({ id: req.user.id }).select('picklists requiredFields').lean()
-            const allowedTypes = new Set(getEffectivePicklists(user?.picklists).subtaskType.map((option) => option.value))
-            const invalidType = req.body.subtasks.find((subtask) => subtask.type && !allowedTypes.has(subtask.type))
-            if (invalidType) return res.status(400).json({ error: 'Invalid subtask type' })
-
             const existingTask = await taskModel.findOne({ id: req.params.id, userId: req.user.id }).lean()
             const existingSubtasks = new Map((existingTask?.subtasks || []).map((subtask) => [
                 `${subtask.type || ''}|${subtask.startDate}|${subtask.dueDate || ''}|${subtask.title}`,

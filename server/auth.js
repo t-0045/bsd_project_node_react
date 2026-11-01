@@ -12,6 +12,10 @@ const verificationTokenLifetime = 60 * 60 * 1000
 const publicUser = (user) => {
     const userObject = user.toObject ? user.toObject() : user
     const { passwordHash, refreshTokenHash, ...safeUser } = userObject
+    if (safeUser.calendarHoursCustomized !== true && safeUser.calendarStartHour === 0 && safeUser.calendarEndHour === 24) {
+        safeUser.calendarStartHour = 7
+        safeUser.calendarEndHour = 17
+    }
     return safeUser
 }
 
@@ -89,8 +93,11 @@ const register = async ({ email, password, businessName }) => {
         refreshTokenHash: null
     }
     const createdUser = await userModel.create(user)
+    const tokens = issueTokens(createdUser)
+    const refreshTokenHash = await bcrypt.hash(tokens.refreshToken, 12)
+    await userModel.updateOne({ id: createdUser.id }, { $set: { refreshTokenHash } })
     await sendVerificationEmail(createdUser, verificationToken)
-    return { user: publicUser(createdUser) }
+    return { user: publicUser(createdUser), ...tokens }
 }
 
 const login = async ({ email, password }) => {

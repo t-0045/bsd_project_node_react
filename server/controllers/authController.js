@@ -3,7 +3,7 @@ const userModel = require('../models/User')
 const taskModel = require('../models/Task')
 const appointmentModel = require('../models/Appointment')
 const customerModel = require('../models/Customer')
-const { defaultPicklists, getEffectivePicklists } = require('../config/picklists')
+const { defaultPicklists, getEffectivePicklists, taskStatusColors } = require('../config/picklists')
 
 const sendTokens = (res, result) => {
     auth.setRefreshCookie(res, result.refreshToken)
@@ -13,7 +13,8 @@ const sendTokens = (res, result) => {
 const register = async (req, res, next) => {
     try {
         const result = await auth.register(req.body)
-        return res.status(201).json(result)
+        auth.setRefreshCookie(res, result.refreshToken)
+        return res.status(201).json({ accessToken: result.accessToken, user: result.user })
     } catch (error) {
         return next(error)
     }
@@ -140,7 +141,7 @@ const updatePersonalDetails = async (req, res, next) => {
 
 const updateSystemSettings = async (req, res, next) => {
     const updates = {}
-    const { includeSubtaskTimers, duplicateCustomerFields, duplicateCustomerMode, requiredFields, calendarStartHour, calendarEndHour } = req.body
+    const { includeSubtaskTimers, duplicateCustomerFields, duplicateCustomerMode, requiredFields, calendarStartHour, calendarEndHour, calendarType, calendarView } = req.body
 
     if (includeSubtaskTimers !== undefined) {
         if (typeof includeSubtaskTimers !== 'boolean') {
@@ -198,6 +199,23 @@ const updateSystemSettings = async (req, res, next) => {
         }
         updates.calendarStartHour = calendarStartHour
         updates.calendarEndHour = calendarEndHour
+        updates.calendarHoursCustomized = true
+    }
+    if (calendarType !== undefined) {
+        if (!['gregorian', 'hebrew'].includes(calendarType)) {
+            const error = new Error('Calendar type must be gregorian or hebrew')
+            error.status = 400
+            return next(error)
+        }
+        updates.calendarType = calendarType
+    }
+    if (calendarView !== undefined) {
+        if (!['day', 'week', 'month'].includes(calendarView)) {
+            const error = new Error('Calendar view must be day, week, or month')
+            error.status = 400
+            return next(error)
+        }
+        updates.calendarView = calendarView
     }
     if (!Object.keys(updates).length) {
         const error = new Error('No system settings were provided')
@@ -272,9 +290,10 @@ const updatePicklists = async (req, res, next) => {
             const currentOptions = currentPicklists[key]
             const values = submittedOptions.map((option) => option?.value)
             const labels = submittedOptions.map((option) => typeof option?.label === 'string' ? option.label.trim() : '')
+            const invalidTaskStatusColor = key === 'taskStatus' && submittedOptions.some((option) => !taskStatusColors.includes(option?.color))
             if (values.some((value) => typeof value !== 'string' || !/^[A-Z][A-Z0-9_]{1,39}$/.test(value)) ||
                 labels.some((label) => !label || label.length > 60) ||
-                new Set(values).size !== values.length) {
+                new Set(values).size !== values.length || invalidTaskStatusColor) {
                 const error = new Error('Picklist values must have unique valid IDs and non-empty labels up to 60 characters')
                 error.status = 400
                 return next(error)
@@ -303,7 +322,8 @@ const updatePicklists = async (req, res, next) => {
             nextPicklists[key] = submittedOptions.map((option) => ({
                 value: option.value,
                 label: option.label.trim(),
-                system: currentByValue.get(option.value)?.system === true
+                system: currentByValue.get(option.value)?.system === true,
+                ...(key === 'taskStatus' ? { color: option.color } : {})
             }))
         }
 
