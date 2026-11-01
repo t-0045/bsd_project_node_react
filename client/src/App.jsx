@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { BrowserRouter as Router, Navigate, Route, Routes, useLocation } from "react-router-dom"
+import { createBrowserRouter, Navigate, Route, Routes, RouterProvider, useLocation } from "react-router-dom"
 import Layout from './components/Shared/Layout'
 import Dashboard from './components/Dashboard/Dashboard'
 import Login from './components/Auth/Login'
@@ -31,7 +31,7 @@ const PageTitle = () => {
   return null
 }
 
-const App = () => {
+const AppContent = () => {
   const [user, setUser] = useState(null)
   const [picklists, setPicklists] = useState(defaultPicklists)
   const [isLoading, setIsLoading] = useState(true)
@@ -55,7 +55,7 @@ const App = () => {
   if (isLoading) return null
 
   return (
-    <Router>
+    <>
       <PageTitle />
         <Routes>
           <Route path='/login' element={<Login onLogin={async (currentUser) => {
@@ -76,8 +76,17 @@ const App = () => {
           </Route>
           <Route path='*' element={<Navigate to={user ? '/' : '/login'} replace />} />
         </Routes>
-    </Router>
+    </>
   )
 }
+
+const router = createBrowserRouter([
+  {
+    path: '*',
+    element: <AppContent />,
+  },
+])
+
+const App = () => <RouterProvider router={router} />
 
 export default App

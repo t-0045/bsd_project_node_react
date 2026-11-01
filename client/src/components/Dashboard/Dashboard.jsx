@@ -4,6 +4,7 @@ import { Link } from "react-router-dom"
 import { AccessTime, Event, Pause, People, Stop, TaskAlt, Alert, Box, Button, Card, CardContent, CircularProgress, Grid, Paper, Stack, Typography } from "../Shared/PrimeUI"
 import { changeSubtaskTimerStatus, getAppointments, getCustomers, getTasks } from "../../api"
 import { formatDateTime } from '../../dateFormat'
+import taskStatusColorValues from '../../taskStatusColors'
 
 const Dashboard = ({ user, picklists }) => {
   const includeSubtaskTimers = user?.includeSubtaskTimers !== false
@@ -13,6 +14,7 @@ const Dashboard = ({ user, picklists }) => {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
   const [appointmentView, setAppointmentView] = useState('today')
+  const [timerNow, setTimerNow] = useState(0)
 
   const loadDashboard = async () => {
     try {
@@ -31,6 +33,29 @@ const Dashboard = ({ user, picklists }) => {
     loadDashboard()
   }, [])
 
+  const activeTimer = includeSubtaskTimers ? data.tasks.flatMap((task) => (task.subtasks || []).map((subtask, subtaskIndex) => ({
+    ...subtask,
+    taskTitle: task.title,
+    taskId: task.id,
+    subtaskIndex
+  }))).find((subtask) => subtask.status === 'RUNNING') : null
+
+  useEffect(() => {
+    if (!activeTimer) return undefined
+    const intervalId = window.setInterval(() => setTimerNow(Date.now()), 1000)
+    return () => window.clearInterval(intervalId)
+  }, [activeTimer?.taskId, activeTimer?.subtaskIndex])
+
+  const activeTimerStartedAt = activeTimer ? Date.parse(activeTimer.sessions?.at(-1)?.startedAt) : NaN
+  const activeTimerDuration = activeTimer
+    ? (Number(activeTimer.totalDuration) || 0) + (Number.isFinite(activeTimerStartedAt) && timerNow ? Math.max(0, Math.floor((timerNow - activeTimerStartedAt) / 1000)) : 0)
+    : 0
+  const formatTimerDuration = (seconds) => [
+    Math.floor(seconds / 3600),
+    Math.floor((seconds % 3600) / 60),
+    seconds % 60
+  ].map((value) => String(value).padStart(2, '0')).join(':')
+
   const handleTimerStatus = async (action) => {
     if (!activeTimer) return
     try {
@@ -43,9 +68,8 @@ const Dashboard = ({ user, picklists }) => {
 
   const cards = [
     { label: 'לקוחות', value: data.customers.length, icon: <People color="primary" fontSize="large" /> },
-    { label: 'משימות פתוחות', value: data.tasks.filter((item) => item.status !== 'COMPLETED' && item.status !== 'DELETED').length, icon: <TaskAlt color="secondary" fontSize="large" /> },
+    { label: 'משימות פתוחות', value: data.tasks.filter((item) => !item.isDeleted && item.status !== 'COMPLETED').length, icon: <TaskAlt color="secondary" fontSize="large" /> },
     { label: 'פגישות', value: data.appointments.filter((item) => item.status === 'SCHEDULED').length, icon: <Event color="success" fontSize="large" /> },
-    ...(includeSubtaskTimers ? [{ label: 'טיימר פעיל', value: data.tasks.some((task) => (task.subtasks || []).some((subtask) => subtask.status === 'RUNNING')) ? '✓' : '✕', icon: <AccessTime color="warning" fontSize="large" /> }] : []),
   ]
 
   const getDateKey = (date) => {
@@ -68,13 +92,7 @@ const Dashboard = ({ user, picklists }) => {
   const weekEnd = new Date(today)
   weekEnd.setDate(today.getDate() + 7)
 
-  const visibleTasks = data.tasks.filter((item) => item.status !== 'COMPLETED' && item.status !== 'DELETED').slice(0, 5)
-  const activeTimer = includeSubtaskTimers ? data.tasks.flatMap((task) => (task.subtasks || []).map((subtask, subtaskIndex) => ({
-    ...subtask,
-    taskTitle: task.title,
-    taskId: task.id,
-    subtaskIndex
-  }))).find((subtask) => subtask.status === 'RUNNING') : null
+  const visibleTasks = data.tasks.filter((item) => !item.isDeleted && item.status !== 'COMPLETED')
   const visibleAppointments = data.appointments
     .filter((item) => item.status === 'SCHEDULED')
     .filter((item) => {
@@ -108,35 +126,42 @@ const Dashboard = ({ user, picklists }) => {
             </Card>
           </Grid>
         ))}
+        {includeSubtaskTimers && <Grid item xs={12} sm={6} md={3}>
+          <Card className="dashboard-active-timer" elevation={1}>
+            <CardContent sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: 88, boxSizing: 'border-box', p: 1.5, '&:last-child': { pb: 1.5 } }}>
+              <Box display="flex" justifyContent="space-between" alignItems="center">
+                <Typography color="text.secondary">הטיימר הפעיל</Typography>
+                <Box display="flex" alignItems="center" gap={0.75}>
+                  {activeTimer && <Typography className="dashboard-active-timer-duration" aria-live="off">{formatTimerDuration(activeTimerDuration)}</Typography>}
+                  <AccessTime />
+                </Box>
+              </Box>
+              {activeTimer ? (
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 0.75, minWidth: 0 }}>
+                  <Box sx={{ minWidth: 0, flex: 1 }}>
+                    <Typography fontWeight="bold" noWrap>{activeTimer.title || 'תת־משימה'}</Typography>
+                    <Typography variant="body2" color="text.secondary" noWrap>משימה: {activeTimer.taskTitle || 'ללא כותרת'}</Typography>
+                  </Box>
+                  <Stack direction="row" spacing={0.5} sx={{ flexShrink: 0 }}>
+                    <Button size="small" variant="outlined" color="warning" startIcon={<Pause />} onClick={() => handleTimerStatus('pause')}>השהיה</Button>
+                    <Button size="small" variant="contained" color="error" startIcon={<Stop />} onClick={() => handleTimerStatus('complete')}>סיום</Button>
+                  </Stack>
+                </Box>
+              ) : <Typography color="text.secondary">אין טיימר פעיל</Typography>}
+            </CardContent>
+          </Card>
+        </Grid>}
       </Grid>
       {!isLoading && <Grid container spacing={2.5} sx={{ mt: 2.5 }}>
-        {includeSubtaskTimers && <Grid item xs={12}>
-          <Paper sx={{ p: 2.5 }}>
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-              <Typography variant="h6" fontWeight="bold">הטיימר הפעיל</Typography>
-            </Box>
-            {activeTimer ? (
-              <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 1 }}>
-                <Typography fontWeight="bold">{activeTimer.title}</Typography>
-                <Typography variant="body2" color="text.secondary">משימה: {activeTimer.taskTitle || 'ללא'}</Typography>
-                <Typography variant="body2" color="text.secondary">משך כולל: {activeTimer.totalDuration || 0} שניות</Typography>
-                <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
-                  <Button variant="outlined" color="warning" startIcon={<Pause />} onClick={() => handleTimerStatus('pause')}>השהיה</Button>
-                  <Button variant="contained" color="error" startIcon={<Stop />} onClick={() => handleTimerStatus('complete')}>סיום</Button>
-                </Stack>
-              </Paper>
-            ) : <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 1 }}><Typography color="text.secondary">אין טיימר פעיל</Typography></Paper>}
-          </Paper>
-        </Grid>}
         <Grid item xs={12} md={6}>
           <Paper sx={{ p: 2.5, height: '100%' }}>
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
               <Typography variant="h6" fontWeight="bold">משימות פתוחות</Typography>
               <Button component={Link} to="/tasks" size="small">לכל המשימות</Button>
             </Box>
-            <Stack spacing={1.25}>
+            <Stack className="dashboard-task-list" spacing={1.25}>
               {visibleTasks.length ? visibleTasks.map((item) => (
-                <Paper key={item.id} variant="outlined" sx={{ p: 1.5, borderRadius: 1 }}>
+                <Paper key={item.id} variant="outlined" style={{ backgroundColor: taskStatusColorValues[taskStatuses.find((status) => status.value === item.status)?.color] || '#ffffff' }} sx={{ p: 1.5, borderRadius: 1 }}>
                   <Typography component={Link} to={`/tasks?taskId=${item.id}`} fontWeight="bold" color="primary" sx={{ textDecoration: 'none' }}>{item.title || 'ללא כותרת'}</Typography>
                   <Typography variant="body2" color="text.secondary">{taskPriorities.find((option) => option.value === item.priority)?.label || item.priority} | {taskStatuses.find((option) => option.value === item.status)?.label || item.status}</Typography>
                 </Paper>

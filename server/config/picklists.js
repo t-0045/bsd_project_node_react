@@ -7,8 +7,7 @@ const defaultPicklists = {
     taskStatus: [
         { value: 'OPEN', label: 'פתוחה', color: 'teal', system: true },
         { value: 'IN_PROGRESS', label: 'בתהליך', color: 'blue', system: true },
-        { value: 'COMPLETED', label: 'הושלמה', color: 'green', system: true },
-        { value: 'DELETED', label: 'נמחקה', color: 'rose', system: true }
+        { value: 'COMPLETED', label: 'הושלמה', color: 'green', system: true }
     ],
     taskPriority: [
         { value: 'LOW', label: 'נמוכה', system: true },
@@ -29,7 +28,7 @@ const defaultPicklists = {
     ]
 }
 
-const taskStatusColors = ['teal', 'blue', 'green', 'amber', 'orange', 'rose', 'red', 'violet', 'slate', 'cyan']
+const taskStatusColors = ['rose', 'red', 'orange', 'amber', 'indigo', 'violet', 'blue', 'cyan', 'teal', 'green', 'lime', 'slate']
 
 const getEffectivePicklists = (picklists = {}) => Object.fromEntries(
     Object.entries(defaultPicklists).map(([key, defaults]) => {

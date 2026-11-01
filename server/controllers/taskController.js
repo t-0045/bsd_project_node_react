@@ -5,22 +5,39 @@ const userModel = require('../models/User')
 
 const validateTaskDates = async (req, res, next) => {
     try {
-        const existingTask = req.method === 'PATCH'
+        const isUpdate = req.method === 'PATCH'
+        const existingTask = isUpdate
             ? await taskModel.findOne({ id: req.params.id, userId: req.user.id }).lean()
             : null
-        const taskDue = req.body.dueDate || existingTask?.dueDate
+        const taskDue = req.body.dueDate ?? existingTask?.dueDate
+        const taskDueChanged = !isUpdate || (req.body.dueDate !== undefined && req.body.dueDate !== existingTask?.dueDate)
+        const submittedSubtasks = Array.isArray(req.body.subtasks) ? req.body.subtasks : null
+        const changedSubtaskIndexes = submittedSubtasks
+            ? submittedSubtasks.reduce((indexes, subtask, index) => {
+                const existingSubtask = existingTask?.subtasks?.[index]
+                if (!existingSubtask || subtask.startDate !== existingSubtask.startDate || (subtask.dueDate || null) !== (existingSubtask.dueDate || null)) {
+                    indexes.push(index)
+                }
+                return indexes
+            }, [])
+            : []
+
+        if (isUpdate && !taskDueChanged && changedSubtaskIndexes.length === 0) return next()
+
         const due = Date.parse(taskDue)
 
         if (!Number.isFinite(due)) {
             return res.status(400).json({ error: 'The due date must be valid' })
         }
 
-        const subtasks = Array.isArray(req.body.subtasks) ? req.body.subtasks : existingTask?.subtasks || []
-        const invalidSubtask = subtasks.find((subtask) => {
+        const subtasksToValidate = taskDueChanged
+            ? submittedSubtasks || existingTask?.subtasks || []
+            : changedSubtaskIndexes.map((index) => submittedSubtasks[index])
+        const invalidSubtask = subtasksToValidate.find((subtask) => {
             const subtaskStart = Date.parse(subtask.startDate)
             const subtaskDue = subtask.dueDate ? Date.parse(subtask.dueDate) : null
-            return !Number.isFinite(subtaskStart) || subtaskStart < Date.now() || subtaskStart > due ||
-                (subtaskDue !== null && (!Number.isFinite(subtaskDue) || subtaskDue <= subtaskStart || subtaskDue < Date.now() || subtaskDue > due))
+            return !Number.isFinite(subtaskStart) || subtaskStart > due ||
+                (subtaskDue !== null && (!Number.isFinite(subtaskDue) || subtaskDue <= subtaskStart || subtaskDue > due))
         })
         if (invalidSubtask) return res.status(400).json({ error: 'Subtask dates must be within the task date range' })
         next()

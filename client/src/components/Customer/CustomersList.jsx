@@ -50,7 +50,7 @@ const CustomersList = ({ user, picklists }) => {
     try {
       setCustomers(await getCustomers())
     } catch (requestError) {
-      setError(requestError.response?.data?.error || 'Failed to fetch customers')
+      setError(requestError.response?.data?.error || 'טעינת הלקוחות נכשלה')
     } finally {
       setIsLoading(false)
     }
@@ -101,7 +101,7 @@ const CustomersList = ({ user, picklists }) => {
       else await createTask(activityForm)
       closeActivity()
     } catch (requestError) {
-      setError(requestError.response?.data?.error || `Failed to save ${activityType}`)
+      setError(requestError.response?.data?.error || (activityType === 'appointment' ? 'שמירת הפגישה נכשלה' : 'שמירת המשימה נכשלה'))
     }
   }
 
@@ -117,7 +117,7 @@ const CustomersList = ({ user, picklists }) => {
         setDuplicateWarning({ customer, matches: requestError.response.data.matches || [] })
         return
       }
-      setError(requestError.response?.data?.error || 'Failed to save customer')
+      setError(requestError.response?.data?.error || 'שמירת הלקוח נכשלה')
     }
   }
 
@@ -130,7 +130,7 @@ const CustomersList = ({ user, picklists }) => {
       fetchCustomers()
     } catch (requestError) {
       setDuplicateWarning(null)
-      setError(requestError.response?.data?.error || 'Failed to save customer')
+      setError(requestError.response?.data?.error || 'שמירת הלקוח נכשלה')
     }
   }
 
@@ -279,7 +279,7 @@ const CustomersList = ({ user, picklists }) => {
                 {(picklists?.taskPriority || []).map((option) => <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>)}
               </TextField>
               <TextField select name="status" label="סטטוס" value={activityForm.status || 'OPEN'} onChange={({ target }) => setActivityForm({ ...activityForm, status: target.value })}>
-                {picklists?.taskStatus?.filter((option) => option.value !== 'DELETED').map((option) => <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>)}
+                {(picklists?.taskStatus || []).map((option) => <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>)}
               </TextField>
               <TextField name="dueDate" type="datetime-local" label="תאריך יעד" value={activityForm.dueDate || ''} onChange={({ target }) => setActivityForm({ ...activityForm, dueDate: target.value })} InputLabelProps={{ shrink: true }} required />
               <TextField name="notes" label="הערות" value={activityForm.notes || ''} onChange={({ target }) => setActivityForm({ ...activityForm, notes: target.value })} multiline rows={3} required={taskRequired.includes('notes')} />

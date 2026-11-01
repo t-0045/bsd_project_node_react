@@ -28,19 +28,6 @@ const formatDuration = (seconds) => {
   return [hours, minutes, remainingSeconds].map((value) => String(value).padStart(2, '0')).join(':')
 }
 
-const taskStatusBackgrounds = {
-  teal: '#f3faf8',
-  blue: '#f4f8fd',
-  green: '#f5faf2',
-  amber: '#fdfaf1',
-  orange: '#fdf7f2',
-  rose: '#fcf5f6',
-  red: '#fcf4f3',
-  violet: '#f8f5fb',
-  slate: '#f6f8f9',
-  cyan: '#f2f9fa'
-}
-
 const TasksList = ({ user, picklists }) => {
   const includeSubtaskTimers = user?.includeSubtaskTimers !== false
   const taskRequired = user?.requiredFields?.task ?? ['title']
@@ -59,6 +46,7 @@ const TasksList = ({ user, picklists }) => {
   const [quickCreateCustomerOpen, setQuickCreateCustomerOpen] = useState(false)
   const [subtaskDialogOpen, setSubtaskDialogOpen] = useState(false)
   const [selectedTask, setSelectedTask] = useState(null)
+  const [editingSubtaskIndex, setEditingSubtaskIndex] = useState(null)
   const [detailsTask, setDetailsTask] = useState(null)
   const [subtaskType, setSubtaskType] = useState('')
   const [subtaskDetails, setSubtaskDetails] = useState('')
@@ -91,7 +79,7 @@ const TasksList = ({ user, picklists }) => {
 
   const fetchTasks = async () => {
     try { setTasks(await getTasks()) }
-    catch (requestError) { setError(requestError.response?.data?.error || 'Failed to fetch tasks') }
+    catch (requestError) { setError(requestError.response?.data?.error || 'טעינת המשימות נכשלה') }
     finally { setIsLoading(false) }
   }
 
@@ -129,7 +117,7 @@ const TasksList = ({ user, picklists }) => {
           setSearchParams({}, { replace: true })
         }
       } catch (requestError) {
-        setError(requestError.response?.data?.error || 'Failed to fetch tasks')
+        setError(requestError.response?.data?.error || 'טעינת המשימות נכשלה')
       } finally {
         setIsLoading(false)
       }
@@ -158,7 +146,7 @@ const TasksList = ({ user, picklists }) => {
       else await createTask(task)
       setOpen(false)
       fetchTasks()
-    } catch (requestError) { setError(requestError.response?.data?.error || 'Failed to save task') }
+    } catch (requestError) { setError(requestError.response?.data?.error || 'שמירת המשימה נכשלה') }
   }
 
   const handleDelete = async (id) => {
@@ -176,6 +164,7 @@ const TasksList = ({ user, picklists }) => {
 
   const openAddSubtask = (selectedTaskItem) => {
     setSelectedTask(selectedTaskItem)
+    setEditingSubtaskIndex(null)
     setSubtaskType(subtaskTypes[0]?.value || '')
     setSubtaskDetails('')
     setSubtaskNotes('')
@@ -184,26 +173,57 @@ const TasksList = ({ user, picklists }) => {
     setSubtaskDialogOpen(true)
   }
 
-  const handleAddSubtask = async (event) => {
+  const openEditSubtask = (selectedTaskItem, subtaskIndex) => {
+    const subtask = selectedTaskItem.subtasks[subtaskIndex]
+    setSelectedTask(selectedTaskItem)
+    setEditingSubtaskIndex(subtaskIndex)
+    setSubtaskType(subtask.type || subtaskTypes.find((option) => option.label === subtask.title)?.value || subtask.title || '')
+    setSubtaskDetails(subtask.details || '')
+    setSubtaskNotes(subtask.notes || '')
+    setSubtaskStartDate(subtask.startDate || '')
+    setSubtaskDueDate(subtask.dueDate || '')
+    setSubtaskDialogOpen(true)
+  }
+
+  const handleSaveSubtask = async (event) => {
     event.preventDefault()
     const typeInput = subtaskType.trim()
     const selectedType = subtaskTypes.find((option) => option.value === typeInput || option.label === typeInput)
     if ((subtaskRequired.includes('type') && !typeInput) || !subtaskStartDate || !subtaskDueDate || !selectedTask) return
     try {
+      const currentSubtasks = selectedTask.subtasks || []
+      const subtaskChanges = editingSubtaskIndex === null
+        ? {
+            type: selectedType?.value || typeInput || null,
+            title: selectedType?.label || typeInput,
+            details: isOtherSubtaskType ? subtaskDetails.trim() : '',
+            notes: subtaskNotes.trim(),
+            startDate: subtaskStartDate,
+            dueDate: subtaskDueDate || null,
+            completed: false
+          }
+        : {
+            ...currentSubtasks[editingSubtaskIndex],
+            type: selectedType?.value || typeInput || null,
+            title: selectedType?.label || typeInput,
+            details: isOtherSubtaskType ? subtaskDetails.trim() : '',
+            notes: subtaskNotes.trim(),
+            startDate: subtaskStartDate,
+            dueDate: subtaskDueDate || null
+          }
+      const updatedSubtasks = editingSubtaskIndex === null
+        ? [...currentSubtasks, subtaskChanges]
+        : currentSubtasks.map((subtask, index) => index === editingSubtaskIndex ? subtaskChanges : subtask)
+
       await updateTask(selectedTask.id, {
-        subtasks: [...(selectedTask.subtasks || []), {
-          type: selectedType?.value || typeInput || null,
-          title: selectedType?.label || typeInput,
-          details: isOtherSubtaskType ? subtaskDetails.trim() : '',
-          notes: subtaskNotes.trim(),
-          startDate: subtaskStartDate,
-          dueDate: subtaskDueDate || null,
-          completed: false
-        }]
+        subtasks: updatedSubtasks
       })
       setSubtaskDialogOpen(false)
+      setEditingSubtaskIndex(null)
       fetchTasks()
-    } catch (requestError) { setError(requestError.response?.data?.error || 'Failed to add subtask') }
+    } catch (requestError) {
+      setError(requestError.response?.data?.error || (editingSubtaskIndex === null ? 'הוספת תת־המשימה נכשלה' : 'עדכון תת־המשימה נכשל'))
+    }
   }
 
   const handleToggleSubtask = async (selectedTaskItem, subtaskIndex) => {
@@ -212,7 +232,7 @@ const TasksList = ({ user, picklists }) => {
       const isCompleting = selectedSubtask && !selectedSubtask.completed
       let taskToUpdate = selectedTaskItem
 
-      if (isCompleting && selectedSubtask.status === 'RUNNING') {
+      if (isCompleting && selectedSubtask.status !== 'COMPLETED') {
         taskToUpdate = await changeSubtaskTimerStatus(selectedTaskItem.id, subtaskIndex, 'complete')
       }
 
@@ -225,7 +245,7 @@ const TasksList = ({ user, picklists }) => {
         setCompletionQuestion({ taskId: selectedTaskItem.id, taskTitle: selectedTaskItem.title })
       }
       fetchTasks()
-    } catch (requestError) { setError(requestError.response?.data?.error || 'Failed to update subtask') }
+    } catch (requestError) { setError(requestError.response?.data?.error || 'עדכון תת־המשימה נכשל') }
   }
 
   const handleSubtaskTimer = async (selectedTaskItem, subtaskIndex, action) => {
@@ -278,12 +298,12 @@ const TasksList = ({ user, picklists }) => {
               event.preventDefault()
               setDetailsTask(item)
             }
-          }} sx={{ p: 2, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 2, cursor: 'pointer', bgcolor: taskStatusBackgrounds[taskStatuses.find((option) => option.value === item.status)?.color] || 'background.paper' }}>
+          }} sx={{ p: 2, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 2, cursor: 'pointer' }}>
             <Box sx={{ flex: 1 }}>
               <Typography fontWeight="bold">{item.title || 'ללא כותרת'}</Typography>
               <Typography variant="body2" color="text.secondary">לקוח: {customers.find((customer) => customer.id === item.customerId)?.fullName || 'ללא'}</Typography>
               <Typography variant="body2" color="text.secondary">עדיפות: {taskPriorities.find((option) => option.value === item.priority)?.label || item.priority} | סטטוס: {taskStatuses.find((option) => option.value === item.status)?.label || item.status}</Typography>
-              <Typography variant="body2" color="text.secondary">תאריך יעד: {formatDateTime(item.dueDate)} | נמחקה: {item.isDeleted ? 'כן' : 'לא'}</Typography>
+              <Typography variant="body2" color="text.secondary">תאריך יעד: {formatDateTime(item.dueDate)}</Typography>
               <Typography variant="body2" color="text.secondary">הערות: {item.notes || 'ללא'}</Typography>
               <Stack spacing={0.25} sx={{ mt: 1 }}>
                 {(item.subtasks || []).map((subtask, subtaskIndex) => (
@@ -295,6 +315,7 @@ const TasksList = ({ user, picklists }) => {
                       {subtask.notes && <Typography variant="caption" color="text.secondary">הערה: {subtask.notes}</Typography>}
                       {includeSubtaskTimers && <Typography variant="caption" color="text.secondary">טיימר: {{ PAUSED: 'מושהה', RUNNING: 'פעיל', COMPLETED: 'הושלם' }[subtask.status] || 'מושהה'} | זמן כולל: {formatDuration(getSubtaskDuration(subtask))}</Typography>}
                     </Box>
+                    <IconButton size="small" aria-label={`עריכת תת־משימה ${subtask.title || subtaskIndex + 1}`} disabled={subtask.completed} onClick={() => openEditSubtask(item, subtaskIndex)}><Edit /></IconButton>
                     {includeSubtaskTimers && <Box>
                       {subtask.status !== 'RUNNING' && subtask.status !== 'COMPLETED' && <IconButton size="small" color="success" aria-label={subtask.status === 'PAUSED' && subtask.sessions?.length ? 'המשך טיימר' : 'הפעל טיימר'} onClick={() => handleSubtaskTimer(item, subtaskIndex, 'start')}><PlayArrow /></IconButton>}
                       {subtask.status === 'RUNNING' && <IconButton size="small" color="warning" aria-label="השהה טיימר" onClick={() => handleSubtaskTimer(item, subtaskIndex, 'pause')}><Pause /></IconButton>}
@@ -359,8 +380,8 @@ const TasksList = ({ user, picklists }) => {
       </Dialog>
       <QuickCreateCustomer open={quickCreateCustomerOpen} onClose={() => setQuickCreateCustomerOpen(false)} onCreated={handleCustomerCreated} picklists={picklists} user={user} />
       <Dialog open={subtaskDialogOpen} onClose={() => setSubtaskDialogOpen(false)} fullWidth maxWidth="sm">
-        <Box component="form" onSubmit={handleAddSubtask}>
-          <DialogTitle>הוספת משימת משנה</DialogTitle>
+        <Box component="form" onSubmit={handleSaveSubtask}>
+          <DialogTitle>{editingSubtaskIndex === null ? 'הוספת משימת משנה' : 'עריכת משימת משנה'}</DialogTitle>
           <DialogContent sx={{ pt: 2 }}>
             <TextField select autoFocus fullWidth name="subtaskType" label="סוג משימה" value={subtaskType} onChange={(event) => setSubtaskType(event.target.value)} required={subtaskRequired.includes('type')}>
               {subtaskTypes.map((option) => <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>)}
@@ -370,7 +391,7 @@ const TasksList = ({ user, picklists }) => {
             <TextField fullWidth name="subtaskStartDate" type="datetime-local" label="תאריך התחלה" value={subtaskStartDate} onChange={(event) => setSubtaskStartDate(event.target.value)} inputProps={{ min: localDateTime(nextMinute()), max: selectedTask?.dueDate || undefined }} InputLabelProps={{ shrink: true }} required sx={{ mt: 2 }} />
             <TextField fullWidth name="subtaskDueDate" type="datetime-local" label="תאריך סיום" value={subtaskDueDate} onChange={(event) => setSubtaskDueDate(event.target.value)} inputProps={{ min: subtaskStartDate || localDateTime(nextMinute()), max: selectedTask?.dueDate || undefined }} InputLabelProps={{ shrink: true }} required sx={{ mt: 2 }} />
           </DialogContent>
-          <DialogActions><Button onClick={() => setSubtaskDialogOpen(false)}>ביטול</Button><Button type="submit" variant="contained">הוספה</Button></DialogActions>
+          <DialogActions><Button onClick={() => setSubtaskDialogOpen(false)}>ביטול</Button><Button type="submit" variant="contained">{editingSubtaskIndex === null ? 'הוספה' : 'שמירה'}</Button></DialogActions>
         </Box>
       </Dialog>
       <Dialog open={Boolean(completionQuestion)} onClose={() => setCompletionQuestion(null)} fullWidth maxWidth="xs">

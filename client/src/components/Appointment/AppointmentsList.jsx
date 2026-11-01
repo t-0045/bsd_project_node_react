@@ -88,7 +88,7 @@ const AppointmentsList = ({ picklists, user, onUserUpdate }) => {
 
   const fetchAppointments = async () => {
     try { setAppointments(await getAppointments()) }
-    catch (requestError) { setError(requestError.response?.data?.error || 'Failed to fetch appointments') }
+    catch (requestError) { setError(requestError.response?.data?.error || 'טעינת הפגישות נכשלה') }
     finally { setIsLoading(false) }
   }
 
@@ -130,7 +130,7 @@ const AppointmentsList = ({ picklists, user, onUserUpdate }) => {
       else await createAppointment(appointment)
       setOpen(false)
       fetchAppointments()
-    } catch (requestError) { setError(requestError.response?.data?.error || 'Failed to save appointment') }
+    } catch (requestError) { setError(requestError.response?.data?.error || 'שמירת הפגישה נכשלה') }
   }
   const handleDelete = async (id) => {
     if (!window.confirm('למחוק את הפגישה?')) return
@@ -270,7 +270,7 @@ const AppointmentsList = ({ picklists, user, onUserUpdate }) => {
     try {
       await updateAppointment(item.id, { ...item, startTime: localDateTime(nextStart), endTime: localDateTime(nextEnd) })
       fetchAppointments()
-    } catch (requestError) { setError(requestError.response?.data?.error || 'Failed to move appointment') }
+    } catch (requestError) { setError(requestError.response?.data?.error || 'העברת הפגישה נכשלה') }
   }
 
   const appointmentBlock = (item) => {

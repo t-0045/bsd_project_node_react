@@ -8,7 +8,6 @@ const defaultPicklists = {
     { value: 'OPEN', label: 'פתוחה', color: 'teal', system: true },
     { value: 'IN_PROGRESS', label: 'בתהליך', color: 'blue', system: true },
     { value: 'COMPLETED', label: 'הושלמה', color: 'green', system: true },
-    { value: 'DELETED', label: 'נמחקה', color: 'rose', system: true },
   ],
   taskPriority: [
     { value: 'LOW', label: 'נמוכה', system: true },

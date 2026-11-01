@@ -110,7 +110,7 @@ export const TextField = ({ select, label, children, multiline, inputProps = {},
     : multiline
       ? <textarea {...controlProps} rows={rows || minRows || 2} style={{ width: '100%', ...(controlProps.style || {}) }} />
       : <input {...controlProps} style={{ width: '100%', ...(controlProps.style || {}) }} />
-  return <label className="p-field" style={wrapperStyle}><span>{label}</span>{InputProps?.startAdornment}{control}{helperText && <small>{helperText}</small>}</label>
+  return <label className="p-field" style={wrapperStyle}><span>{label}</span>{InputProps?.startAdornment}{control}{InputProps?.endAdornment}{helperText && <small>{helperText}</small>}</label>
 }
 
 export const MenuItem = ({ children }) => children
@@ -181,7 +181,9 @@ export const Email = icon('envelope')
 export const Person = icon('user')
 export const Settings = icon('cog')
 export const Add = icon('plus')
-export const AddTask = icon('plus')
+export const AddTask = () => <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="1em" height="1em">
+  <path d="M4 5h11M4 10h11M4 15h7M19 14v7M15.5 17.5h7" />
+</svg>
 export const CalendarMonth = icon('calendar')
 export const Delete = icon('trash')
 export const DeleteOutline = icon('trash')

@@ -1,20 +1,23 @@
-import { useRef, useState } from 'react'
-import { AccountCircle, Add, CloudUpload, DeleteOutline, ExpandMore, Save, Accordion, AccordionDetails, AccordionSummary, Alert, Avatar, Box, Button, Checkbox, CircularProgress, FormControl, FormControlLabel, FormGroup, FormLabel, MenuItem, Radio, RadioGroup, Stack, Switch, TextField, Typography } from './PrimeUI'
-import { changePassword, updatePersonalDetails, updatePicklists, updateProfileImage, updateSystemSettings } from '../../api'
+import { useEffect, useRef, useState } from 'react'
+import { useBlocker } from 'react-router-dom'
+import { AccountCircle, Add, CloudUpload, DeleteOutline, ExpandMore, Save, Accordion, AccordionDetails, AccordionSummary, Alert, Avatar, Box, Button, Checkbox, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, FormControlLabel, FormGroup, FormLabel, MenuItem, Radio, RadioGroup, Stack, Switch, TextField, Typography } from './PrimeUI'
+import { updatePersonalDetails, updatePicklists, updateProfileImage, updateSystemSettings } from '../../api'
 
 const MAX_IMAGE_SIZE = 2 * 1024 * 1024
 const ALLOWED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp']
 const TASK_STATUS_COLORS = [
-  { id: 'teal', name: 'טורקיז', value: '#dff2ed' },
-  { id: 'blue', name: 'כחול', value: '#e4effb' },
-  { id: 'green', name: 'ירוק', value: '#e7f3df' },
-  { id: 'amber', name: 'צהוב', value: '#fbf2d9' },
-  { id: 'orange', name: 'כתום', value: '#fbe9dc' },
   { id: 'rose', name: 'ורוד', value: '#f8e5e8' },
   { id: 'red', name: 'אדום', value: '#f8e2df' },
+  { id: 'orange', name: 'כתום', value: '#fbe9dc' },
+  { id: 'amber', name: 'צהוב', value: '#fbf2d9' },
+  { id: 'indigo', name: 'אינדיגו', value: '#e6e9fb' },
   { id: 'violet', name: 'סגול', value: '#eee7f6' },
-  { id: 'slate', name: 'אפור', value: '#e9eef1' },
-  { id: 'cyan', name: 'תכלת', value: '#def1f5' }
+  { id: 'blue', name: 'כחול', value: '#e4effb' },
+  { id: 'cyan', name: 'תכלת', value: '#def1f5' },
+  { id: 'teal', name: 'טורקיז', value: '#dff2ed' },
+  { id: 'green', name: 'ירוק', value: '#e7f3df' },
+  { id: 'lime', name: 'ליים', value: '#edf4d8' },
+  { id: 'slate', name: 'אפור', value: '#e9eef1' }
 ]
 
 const SettingsPage = ({ user, onUserUpdate, picklists, onPicklistsUpdate }) => {
@@ -41,6 +44,109 @@ const SettingsPage = ({ user, onUserUpdate, picklists, onPicklistsUpdate }) => {
     appointment: ['customerId', 'title']
   })
   const [editablePicklists, setEditablePicklists] = useState(picklists || {})
+
+  const getSettingsSnapshot = (overrides = {}) => JSON.stringify({
+    businessName: overrides.businessName ?? businessName,
+    backupEmails: overrides.backupEmails ?? backupEmails,
+    phoneNumbers: overrides.phoneNumbers ?? phoneNumbers,
+    accessTokenDurationMinutes: overrides.accessTokenDurationMinutes ?? accessTokenDurationMinutes,
+    includeSubtaskTimers: overrides.includeSubtaskTimers ?? includeSubtaskTimers,
+    calendarStartHour: overrides.calendarStartHour ?? calendarStartHour,
+    calendarEndHour: overrides.calendarEndHour ?? calendarEndHour,
+    duplicateCustomerFields: overrides.duplicateCustomerFields ?? duplicateCustomerFields,
+    duplicateCustomerMode: overrides.duplicateCustomerMode ?? duplicateCustomerMode,
+    requiredFields: overrides.requiredFields ?? requiredFields,
+    imagePreview: overrides.imagePreview ?? imagePreview,
+    editablePicklists: overrides.editablePicklists ?? editablePicklists,
+    currentPassword: overrides.currentPassword ?? currentPassword,
+    newPassword: overrides.newPassword ?? newPassword,
+    confirmPassword: overrides.confirmPassword ?? confirmPassword,
+  })
+
+  const [initialSnapshot, setInitialSnapshot] = useState(() => getSettingsSnapshot())
+  const hasUnsavedChanges = getSettingsSnapshot() !== initialSnapshot
+  const blocker = useBlocker(hasUnsavedChanges)
+
+  async function handleSave() {
+    setIsSaving(true)
+    setError('')
+    setSuccess('')
+
+    try {
+      const [updatedUser, updatedProfile, updatedSystemSettings, updatedPicklists] = await Promise.all([
+        updatePersonalDetails({ businessName, backupEmails, phoneNumbers, accessTokenDurationMinutes }),
+        updateProfileImage(imagePreview || null),
+        updateSystemSettings({ includeSubtaskTimers, duplicateCustomerFields, duplicateCustomerMode, requiredFields, calendarStartHour, calendarEndHour }),
+        updatePicklists(editablePicklists),
+      ])
+      const savedUser = { ...updatedUser, ...updatedSystemSettings, profileImage: updatedProfile?.profileImage || '' }
+      onUserUpdate(savedUser)
+      setBusinessName(savedUser?.businessName || '')
+      setBackupEmails(savedUser?.backupEmails || [])
+      setPhoneNumbers(savedUser?.phoneNumbers || [])
+      setAccessTokenDurationMinutes(savedUser?.accessTokenDurationMinutes || 15)
+      setIncludeSubtaskTimers(savedUser?.includeSubtaskTimers !== false)
+      setCalendarStartHour(savedUser?.calendarStartHour ?? 7)
+      setCalendarEndHour(savedUser?.calendarEndHour ?? 17)
+      setDuplicateCustomerFields(savedUser?.duplicateCustomerFields || ['phone', 'email'])
+      setDuplicateCustomerMode(savedUser?.duplicateCustomerMode || 'WARN')
+      setRequiredFields(savedUser?.requiredFields || { customer: ['fullName'], task: ['title'], appointment: ['customerId', 'title'] })
+      setEditablePicklists(updatedPicklists)
+      onPicklistsUpdate(updatedPicklists)
+      setImagePreview(updatedProfile?.profileImage || '')
+      setInitialSnapshot(getSettingsSnapshot({
+        imagePreview: updatedProfile?.profileImage || '',
+        businessName: savedUser?.businessName || '',
+        backupEmails: savedUser?.backupEmails || [],
+        phoneNumbers: savedUser?.phoneNumbers || [],
+        accessTokenDurationMinutes: savedUser?.accessTokenDurationMinutes || 15,
+        includeSubtaskTimers: savedUser?.includeSubtaskTimers !== false,
+        calendarStartHour: savedUser?.calendarStartHour ?? 7,
+        calendarEndHour: savedUser?.calendarEndHour ?? 17,
+        duplicateCustomerFields: savedUser?.duplicateCustomerFields || ['phone', 'email'],
+        duplicateCustomerMode: savedUser?.duplicateCustomerMode || 'WARN',
+        requiredFields: savedUser?.requiredFields || { customer: ['fullName'], task: ['title'], appointment: ['customerId', 'title'] },
+        editablePicklists: updatedPicklists,
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+      }))
+      setSuccess('כל השינויים נשמרו בהצלחה')
+      setError('')
+      return true
+    } catch (requestError) {
+      setError(requestError.response?.data?.error || 'שמירת השינויים נכשלה')
+      return false
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  useEffect(() => {
+    const handleBeforeUnload = (event) => {
+      if (!hasUnsavedChanges) return
+      event.preventDefault()
+      event.returnValue = ''
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [hasUnsavedChanges])
+
+  const handleLeaveWithoutSaving = () => {
+    blocker.proceed()
+  }
+
+  const handleSaveAndLeave = async () => {
+    const saved = await handleSave()
+    if (saved) {
+      blocker.proceed()
+    }
+  }
+
+  const handleStayOnSettings = () => {
+    blocker.reset()
+  }
 
   const picklistDefinitions = [
     { key: 'customerStatus', title: 'סטטוס לקוח' },
@@ -98,65 +204,6 @@ const SettingsPage = ({ user, onUserUpdate, picklists, onPicklistsUpdate }) => {
     reader.readAsDataURL(file)
   }
 
-  const handleSave = async () => {
-    setIsSaving(true)
-    setError('')
-    setSuccess('')
-    if (currentPassword || newPassword || confirmPassword) {
-      if (!currentPassword || !newPassword || !confirmPassword) {
-        setError('יש למלא את כל שדות הסיסמה')
-        setIsSaving(false)
-        return
-      }
-      if (newPassword.length < 8) {
-        setError('הסיסמה החדשה חייבת להכיל לפחות 8 תווים')
-        setIsSaving(false)
-        return
-      }
-      if (newPassword !== confirmPassword) {
-        setError('אימות הסיסמה אינו תואם לסיסמה החדשה')
-        setIsSaving(false)
-        return
-      }
-    }
-
-    try {
-      const [updatedUser, updatedProfile, updatedSystemSettings, updatedPicklists] = await Promise.all([
-        updatePersonalDetails({ businessName, backupEmails, phoneNumbers, accessTokenDurationMinutes }),
-        updateProfileImage(imagePreview || null),
-        updateSystemSettings({ includeSubtaskTimers, duplicateCustomerFields, duplicateCustomerMode, requiredFields, calendarStartHour, calendarEndHour }),
-        updatePicklists(editablePicklists),
-        currentPassword ? changePassword(currentPassword, newPassword) : Promise.resolve()
-      ])
-      const savedUser = { ...updatedUser, ...updatedSystemSettings, profileImage: updatedProfile?.profileImage || '' }
-      onUserUpdate(savedUser)
-      setBusinessName(savedUser?.businessName || '')
-      setBackupEmails(savedUser?.backupEmails || [])
-      setPhoneNumbers(savedUser?.phoneNumbers || [])
-      setAccessTokenDurationMinutes(savedUser?.accessTokenDurationMinutes || 15)
-      setIncludeSubtaskTimers(savedUser?.includeSubtaskTimers !== false)
-      setCalendarStartHour(savedUser?.calendarStartHour ?? 7)
-      setCalendarEndHour(savedUser?.calendarEndHour ?? 17)
-      setDuplicateCustomerFields(savedUser?.duplicateCustomerFields || ['phone', 'email'])
-      setDuplicateCustomerMode(savedUser?.duplicateCustomerMode || 'WARN')
-      setRequiredFields(savedUser?.requiredFields || { customer: ['fullName'], task: ['title'], appointment: ['customerId', 'title'] })
-      setEditablePicklists(updatedPicklists)
-      onPicklistsUpdate(updatedPicklists)
-      setImagePreview(updatedProfile?.profileImage || '')
-      if (currentPassword) {
-        setCurrentPassword('')
-        setNewPassword('')
-        setConfirmPassword('')
-      }
-      setSuccess('כל השינויים נשמרו בהצלחה')
-      setError('')
-    } catch (requestError) {
-      setError(requestError.response?.data?.error || 'שמירת השינויים נכשלה')
-    } finally {
-      setIsSaving(false)
-    }
-  }
-
   const toggleRequiredField = (objectType, field) => {
     setRequiredFields((current) => {
       const fields = current[objectType] || []
@@ -171,6 +218,17 @@ const SettingsPage = ({ user, onUserUpdate, picklists, onPicklistsUpdate }) => {
 
   return (
     <Box className="settings-page">
+      <Dialog open={blocker.state === 'blocked'} onClose={handleStayOnSettings} maxWidth="xs">
+        <DialogTitle>יש שינויים שלא נשמרו</DialogTitle>
+        <DialogContent>האם לשמור את השינויים שביצעת לפני המעבר לעמוד אחר?</DialogContent>
+        <DialogActions>
+          <Button onClick={handleStayOnSettings}>להישאר בהגדרות</Button>
+          <Button color="error" onClick={handleLeaveWithoutSaving}>לצאת בלי לשמור</Button>
+          <Button variant="contained" onClick={handleSaveAndLeave} disabled={isSaving}>
+            {isSaving ? 'שומר...' : 'לשמור ולצאת'}
+          </Button>
+        </DialogActions>
+      </Dialog>
       <Typography variant="h4" component="h1" fontWeight="bold" color="primary" sx={{ mb: 1 }}>
         הגדרות משתמש
       </Typography>
@@ -180,31 +238,35 @@ const SettingsPage = ({ user, onUserUpdate, picklists, onPicklistsUpdate }) => {
           <Typography variant="h6" fontWeight="bold">פרטים אישיים</Typography>
         </AccordionSummary>
         <AccordionDetails sx={{ p: { xs: 2, sm: 3 } }}>
-          <Box sx={{ maxWidth: 520 }}>
+          <Box className="settings-personal-content">
             <Stack spacing={2}>
-              <TextField label="אימייל ראשי" type="email" value={user?.email || ''} disabled fullWidth />
-              <TextField
-                label="שם העסק"
-                value={businessName}
-                onChange={(event) => setBusinessName(event.target.value)}
-                required
-                fullWidth
-              />
-              <TextField
-                select
-                label="תוקף טוקן הגישה אחרי התחברות"
-                value={accessTokenDurationMinutes}
-                onChange={(event) => setAccessTokenDurationMinutes(Number(event.target.value))}
-                helperText="אחרי שהתוקף מסתיים, האפליקציה תבקש טוקן גישה חדש אוטומטית כל עוד ההתחברות בתוקף."
-                fullWidth
-              >
-                <MenuItem value={5}>5 דקות</MenuItem>
-                <MenuItem value={15}>15 דקות</MenuItem>
-                <MenuItem value={30}>30 דקות</MenuItem>
-                <MenuItem value={60}>שעה אחת</MenuItem>
-                <MenuItem value={120}>שעתיים</MenuItem>
-              </TextField>
-              <Typography fontWeight="medium">כתובות אימייל לגיבוי</Typography>
+              <Box className="settings-account-grid">
+                <TextField label="אימייל ראשי" type="email" value={user?.email || ''} disabled fullWidth />
+                <TextField
+                  label="שם העסק"
+                  value={businessName}
+                  onChange={(event) => setBusinessName(event.target.value)}
+                  required
+                  fullWidth
+                />
+                <TextField
+                  select
+                  label="תוקף טוקן הגישה אחרי התחברות"
+                  value={accessTokenDurationMinutes}
+                  onChange={(event) => setAccessTokenDurationMinutes(Number(event.target.value))}
+                  helperText="אחרי שהתוקף מסתיים, האפליקציה תבקש טוקן גישה חדש אוטומטית כל עוד ההתחברות בתוקף."
+                  fullWidth
+                >
+                  <MenuItem value={5}>5 דקות</MenuItem>
+                  <MenuItem value={15}>15 דקות</MenuItem>
+                  <MenuItem value={30}>30 דקות</MenuItem>
+                  <MenuItem value={60}>שעה אחת</MenuItem>
+                  <MenuItem value={120}>שעתיים</MenuItem>
+                </TextField>
+              </Box>
+              <Box className="settings-contact-grid">
+                <Box className="settings-contact-group">
+                  <Typography fontWeight="medium">כתובות אימייל לגיבוי</Typography>
               {backupEmails.map((email, index) => (
                 <Stack key={`backup-email-${index}`} direction="row" spacing={1} alignItems="center">
                   <TextField
@@ -231,7 +293,9 @@ const SettingsPage = ({ user, onUserUpdate, picklists, onPicklistsUpdate }) => {
               >
                 הוספת כתובת גיבוי
               </Button>
-              <Typography fontWeight="medium" sx={{ pt: 1 }}>מספרי טלפון</Typography>
+                </Box>
+                <Box className="settings-contact-group">
+                  <Typography fontWeight="medium">מספרי טלפון</Typography>
               {phoneNumbers.map((number, index) => (
                 <Stack key={`phone-number-${index}`} direction="row" spacing={1} alignItems="center">
                   <TextField
@@ -259,9 +323,11 @@ const SettingsPage = ({ user, onUserUpdate, picklists, onPicklistsUpdate }) => {
               >
                 הוספת מספר טלפון
               </Button>
+                </Box>
+              </Box>
             </Stack>
-          </Box>
-          <Accordion disableGutters elevation={0} sx={{ mt: 2, border: 1, borderColor: 'divider' }}>
+          <Box className="settings-profile-password-grid">
+          <Accordion disableGutters elevation={0} sx={{ border: 1, borderColor: 'divider' }}>
             <AccordionSummary expandIcon={<ExpandMore />} aria-controls="profile-image-settings-content" id="profile-image-settings-header">
               <Typography fontWeight="bold">תמונת משתמש</Typography>
             </AccordionSummary>
@@ -301,46 +367,53 @@ const SettingsPage = ({ user, onUserUpdate, picklists, onPicklistsUpdate }) => {
             </AccordionDetails>
           </Accordion>
 
-          <Accordion disableGutters elevation={0} sx={{ mt: 1, border: 1, borderColor: 'divider' }}>
+          <Accordion disableGutters elevation={0} sx={{ border: 1, borderColor: 'divider' }}>
             <AccordionSummary expandIcon={<ExpandMore />} aria-controls="password-settings-content" id="password-settings-header">
               <Typography fontWeight="bold">שינוי סיסמה</Typography>
             </AccordionSummary>
             <AccordionDetails sx={{ p: { xs: 2, sm: 3 } }}>
-              <Box sx={{ maxWidth: 440 }}>
-                <Stack spacing={2}>
+              <Box sx={{ maxWidth: 760 }}>
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="stretch">
                   <TextField
                     label="סיסמה נוכחית"
                     type="password"
-                    autoComplete="current-password"
+                    name="currentPasswordField"
+                    autoComplete="new-password"
                     value={currentPassword}
                     onChange={(event) => setCurrentPassword(event.target.value)}
-                    required
+                    required={Boolean(currentPassword || newPassword || confirmPassword)}
                     fullWidth
+                    sx={{ flex: 1, minWidth: 0 }}
                   />
                   <TextField
                     label="סיסמה חדשה"
                     type="password"
+                    name="newPasswordField"
                     autoComplete="new-password"
                     value={newPassword}
                     onChange={(event) => setNewPassword(event.target.value)}
                     inputProps={{ minLength: 8 }}
-                    helperText="לפחות 8 תווים"
-                    required
+                    required={Boolean(currentPassword || newPassword || confirmPassword)}
                     fullWidth
+                    sx={{ flex: 1, minWidth: 0 }}
                   />
                   <TextField
                     label="אימות סיסמה חדשה"
                     type="password"
+                    name="confirmPasswordField"
                     autoComplete="new-password"
                     value={confirmPassword}
                     onChange={(event) => setConfirmPassword(event.target.value)}
-                    required
+                    required={Boolean(currentPassword || newPassword || confirmPassword)}
                     fullWidth
+                    sx={{ flex: 1, minWidth: 0 }}
                   />
                 </Stack>
               </Box>
             </AccordionDetails>
           </Accordion>
+          </Box>
+          </Box>
         </AccordionDetails>
       </Accordion>
 
@@ -424,7 +497,7 @@ const SettingsPage = ({ user, onUserUpdate, picklists, onPicklistsUpdate }) => {
                 <AccordionDetails id={`${key}-options`}>
                   <Stack spacing={1}>
                     {(editablePicklists[key] || []).map((option, index) => (
-                      <Stack key={option.value} direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                      <Stack key={option.value} className="settings-picklist-option" direction="row" spacing={1} alignItems="center">
                         <TextField
                           label="תווית"
                           value={option.label}
@@ -432,17 +505,20 @@ const SettingsPage = ({ user, onUserUpdate, picklists, onPicklistsUpdate }) => {
                           inputProps={{ maxLength: 60 }}
                           fullWidth
                         />
-                        {key === 'taskStatus' && <Box role="radiogroup" aria-label={`צבע לסטטוס ${option.label}`} sx={{ display: 'flex', gap: 0.75, flex: '0 0 auto' }}>
+                        {key === 'taskStatus' && <Box className="settings-picklist-colors" role="radiogroup" aria-label={`צבע לסטטוס ${option.label}`} sx={{ display: 'flex', gap: 0.75, flex: '0 0 auto' }}>
                           {TASK_STATUS_COLORS.map((color) => <Button
                             key={color.id}
                             type="button"
+                            className="settings-picklist-color-swatch"
+                            role="radio"
                             aria-label={color.name}
-                            aria-pressed={option.color === color.id}
+                            aria-checked={option.color === color.id}
                             onClick={() => updatePicklistOption(key, index, { color: color.id })}
-                            sx={{ minWidth: 28, width: 28, height: 28, p: 0, borderRadius: '50%', bgcolor: color.value, border: option.color === color.id ? '2px solid #202b35' : '1px solid #b8c4ca', '&:hover': { bgcolor: color.value, filter: 'brightness(0.96)' } }}
+                            style={{ backgroundColor: color.value, borderColor: option.color === color.id ? '#202b35' : '#b8c4ca' }}
                           />)}
                         </Box>}
                         <Button
+                          className="settings-picklist-delete"
                           aria-label={`מחיקת אפשרות ${option.label}`}
                           color="error"
                           disabled={option.system}
