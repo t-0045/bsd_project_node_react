@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 
-import { Add, AddTask, CalendarMonth, Clear, Delete, Edit, ExpandLess, ExpandMore, Search, Alert, Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, InputAdornment, MenuItem, Paper, Stack, TextField, Typography } from "../Shared/PrimeUI"
+import { Add, AddTask, CalendarMonth, Clear, Delete, Edit, Alert, Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, MenuItem, Paper, Stack, TextField, Typography } from "../Shared/PrimeUI"
 import { createAppointment, createCustomer, createTask, deleteCustomer, getCustomers, updateCustomer } from "../../api"
 import { formatDateTime } from '../../dateFormat'
 
@@ -158,10 +158,8 @@ const CustomersList = ({ user, picklists }) => {
         <Button className="customers-add-button" variant="contained" startIcon={<Add />} onClick={openAdd}>לקוח חדש</Button>
       </Box>
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-      <Box className="customers-content-panel">
-      <Box className="customers-search-heading">
-        <Typography variant="h6">רשימת לקוחות</Typography>
-      </Box>
+      <Box className="customers-search-panel">
+      <Box className="customers-search-sticky">
       <Box className="customers-search-row" sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
         <TextField
           fullWidth
@@ -170,12 +168,10 @@ const CustomersList = ({ user, picklists }) => {
           value={filters.text}
           onChange={(event) => updateFilter('text', event.target.value)}
           sx={{ backgroundColor: 'background.paper', flex: '1 1 auto', width: 'auto', minWidth: 0 }}
-          InputProps={{ startAdornment: <InputAdornment position="start"><Search color="action" /></InputAdornment> }}
         />
         <Button
           className="advanced-search-button"
           variant="outlined"
-          startIcon={isAdvancedSearchOpen ? <ExpandLess /> : <ExpandMore />}
           onClick={() => setIsAdvancedSearchOpen((openState) => !openState)}
         >
           {isAdvancedSearchOpen ? 'סגירת חיפוש מתקדם' : 'חיפוש מתקדם'}
@@ -202,7 +198,13 @@ const CustomersList = ({ user, picklists }) => {
           </Box>
         </Box>
       )}
+      </Box>
+      </Box>
 
+      <Box className="customers-content-panel customers-scroll-area">
+      <Box className="customers-search-heading">
+        <Typography variant="h6">רשימת לקוחות</Typography>
+      </Box>
       <Stack className="customers-list" spacing={0} sx={{ mb: 4 }}>
         {filteredCustomers.map((item) => (
           <Paper key={item.id} className="customer-row" elevation={0}>

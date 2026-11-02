@@ -290,10 +290,10 @@ const updatePicklists = async (req, res, next) => {
             const currentOptions = currentPicklists[key]
             const values = submittedOptions.map((option) => option?.value)
             const labels = submittedOptions.map((option) => typeof option?.label === 'string' ? option.label.trim() : '')
-            const invalidTaskStatusColor = key === 'taskStatus' && submittedOptions.some((option) => !taskStatusColors.includes(option?.color))
+            const invalidTaskPriorityColor = key === 'taskPriority' && submittedOptions.some((option) => !taskStatusColors.includes(option?.color))
             if (values.some((value) => typeof value !== 'string' || !/^[A-Z][A-Z0-9_]{1,39}$/.test(value)) ||
                 labels.some((label) => !label || label.length > 60) ||
-                new Set(values).size !== values.length || invalidTaskStatusColor) {
+                new Set(values).size !== values.length || invalidTaskPriorityColor) {
                 const error = new Error('Picklist values must have unique valid IDs and non-empty labels up to 60 characters')
                 error.status = 400
                 return next(error)
@@ -323,7 +323,7 @@ const updatePicklists = async (req, res, next) => {
                 value: option.value,
                 label: option.label.trim(),
                 system: currentByValue.get(option.value)?.system === true,
-                ...(key === 'taskStatus' ? { color: option.color } : {})
+                ...(key === 'taskPriority' ? { color: option.color } : {})
             }))
         }
 

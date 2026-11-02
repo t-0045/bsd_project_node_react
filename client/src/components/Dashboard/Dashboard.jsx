@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 
-import { AccessTime, Event, Pause, People, Stop, TaskAlt, Alert, Box, Button, Card, CardContent, CircularProgress, Grid, Paper, Stack, Typography } from "../Shared/PrimeUI"
-import { changeSubtaskTimerStatus, getAppointments, getCustomers, getTasks } from "../../api"
-import { formatDateTime } from '../../dateFormat'
+import { AccessTime, Event, Pause, People, Stop, TaskAlt, Alert, Box, Button, Card, CardContent, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, Grid, Paper, Stack, Typography } from "../Shared/PrimeUI"
+import { changeSubtaskTimerStatus, getAppointments, getCustomers, getTasks, updateAppointment } from "../../api"
+import { formatDate, formatDateTime } from '../../dateFormat'
 import taskStatusColorValues from '../../taskStatusColors'
 
 const Dashboard = ({ user, picklists }) => {
@@ -14,7 +14,11 @@ const Dashboard = ({ user, picklists }) => {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
   const [appointmentView, setAppointmentView] = useState('today')
+  const [showOverdueAppointments, setShowOverdueAppointments] = useState(false)
+  const [appointmentNow, setAppointmentNow] = useState(Date.now())
   const [timerNow, setTimerNow] = useState(0)
+  const [selectedTask, setSelectedTask] = useState(null)
+  const [updatingAppointmentId, setUpdatingAppointmentId] = useState(null)
 
   const loadDashboard = async () => {
     try {
@@ -32,6 +36,12 @@ const Dashboard = ({ user, picklists }) => {
   useEffect(() => {
     loadDashboard()
   }, [])
+
+  useEffect(() => {
+    if (appointmentView !== 'today') return undefined
+    const intervalId = window.setInterval(() => setAppointmentNow(Date.now()), 30000)
+    return () => window.clearInterval(intervalId)
+  }, [appointmentView])
 
   const activeTimer = includeSubtaskTimers ? data.tasks.flatMap((task) => (task.subtasks || []).map((subtask, subtaskIndex) => ({
     ...subtask,
@@ -66,6 +76,19 @@ const Dashboard = ({ user, picklists }) => {
     }
   }
 
+  const handleUpdateAppointmentStatus = async (appointment, status) => {
+    setUpdatingAppointmentId(appointment.id)
+    setError('')
+    try {
+      await updateAppointment(appointment.id, { status })
+      await loadDashboard()
+    } catch {
+      setError('לא ניתן לעדכן את סטטוס הפגישה כרגע')
+    } finally {
+      setUpdatingAppointmentId(null)
+    }
+  }
+
   const cards = [
     { label: 'לקוחות', value: data.customers.length, icon: <People color="primary" fontSize="large" /> },
     { label: 'משימות פתוחות', value: data.tasks.filter((item) => !item.isDeleted && item.status !== 'COMPLETED').length, icon: <TaskAlt color="secondary" fontSize="large" /> },
@@ -93,6 +116,7 @@ const Dashboard = ({ user, picklists }) => {
   weekEnd.setDate(today.getDate() + 7)
 
   const visibleTasks = data.tasks.filter((item) => !item.isDeleted && item.status !== 'COMPLETED')
+  const customerName = (customerId) => data.customers.find((customer) => customer.id === customerId)?.fullName || 'ללא לקוח'
   const visibleAppointments = data.appointments
     .filter((item) => item.status === 'SCHEDULED')
     .filter((item) => {
@@ -104,6 +128,13 @@ const Dashboard = ({ user, picklists }) => {
     })
     .sort((first, second) => getAppointmentDate(first) - getAppointmentDate(second))
     .slice(0, 5)
+  const overdueAppointments = data.appointments
+    .filter((item) => item.status === 'SCHEDULED')
+    .filter((item) => {
+      const endDate = new Date(item.endTime)
+      return !Number.isNaN(endDate.getTime()) && endDate.getTime() < appointmentNow
+    })
+    .sort((first, second) => new Date(first.endTime) - new Date(second.endTime))
 
   return (
     <Box className="dashboard-page">
@@ -115,7 +146,7 @@ const Dashboard = ({ user, picklists }) => {
       <Grid container spacing={2.5}>
         {cards.map((card) => (
           <Grid item xs={12} sm={6} md={3} key={card.label}>
-            <Card elevation={1}>
+            <Card className="dashboard-summary-card" elevation={1}>
               <CardContent sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: 88 }}>
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
                   <Typography color="text.secondary">{card.label}</Typography>
@@ -127,8 +158,8 @@ const Dashboard = ({ user, picklists }) => {
           </Grid>
         ))}
         {includeSubtaskTimers && <Grid item xs={12} sm={6} md={3}>
-          <Card className="dashboard-active-timer" elevation={1}>
-            <CardContent sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: 88, boxSizing: 'border-box', p: 1.5, '&:last-child': { pb: 1.5 } }}>
+          <Card className="dashboard-summary-card dashboard-active-timer" elevation={1}>
+            <CardContent sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: 120, boxSizing: 'border-box', p: 1.5, '&:last-child': { pb: 1.5 } }}>
               <Box display="flex" justifyContent="space-between" alignItems="center">
                 <Typography color="text.secondary">הטיימר הפעיל</Typography>
                 <Box display="flex" alignItems="center" gap={0.75}>
@@ -137,12 +168,12 @@ const Dashboard = ({ user, picklists }) => {
                 </Box>
               </Box>
               {activeTimer ? (
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 0.75, minWidth: 0 }}>
+                <Box className="dashboard-active-timer-details" sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 0.75, minWidth: 0 }}>
                   <Box sx={{ minWidth: 0, flex: 1 }}>
                     <Typography fontWeight="bold" noWrap>{activeTimer.title || 'תת־משימה'}</Typography>
                     <Typography variant="body2" color="text.secondary" noWrap>משימה: {activeTimer.taskTitle || 'ללא כותרת'}</Typography>
                   </Box>
-                  <Stack direction="row" spacing={0.5} sx={{ flexShrink: 0 }}>
+                  <Stack className="dashboard-active-timer-controls" direction="row" spacing={0.5} sx={{ flexShrink: 1, minWidth: 0 }}>
                     <Button size="small" variant="outlined" color="warning" startIcon={<Pause />} onClick={() => handleTimerStatus('pause')}>השהיה</Button>
                     <Button size="small" variant="contained" color="error" startIcon={<Stop />} onClick={() => handleTimerStatus('complete')}>סיום</Button>
                   </Stack>
@@ -154,43 +185,82 @@ const Dashboard = ({ user, picklists }) => {
       </Grid>
       {!isLoading && <Grid container spacing={2.5} sx={{ mt: 2.5 }}>
         <Grid item xs={12} md={6}>
-          <Paper sx={{ p: 2.5, height: '100%' }}>
+          <Paper sx={{ p: 2.5, height: '32rem', boxSizing: 'border-box', display: 'flex', flexDirection: 'column' }}>
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
               <Typography variant="h6" fontWeight="bold">משימות פתוחות</Typography>
               <Button component={Link} to="/tasks" size="small">לכל המשימות</Button>
             </Box>
-            <Stack className="dashboard-task-list" spacing={1.25}>
+            <Stack className="dashboard-task-list" role="region" aria-label="רשימת משימות פתוחות" tabIndex={0} spacing={0.75} sx={{ flex: '1 1 0%', minHeight: 0, boxSizing: 'border-box', overflowY: 'auto', pr: 0.5 }}>
               {visibleTasks.length ? visibleTasks.map((item) => (
-                <Paper key={item.id} variant="outlined" style={{ backgroundColor: taskStatusColorValues[taskStatuses.find((status) => status.value === item.status)?.color] || '#ffffff' }} sx={{ p: 1.5, borderRadius: 1 }}>
-                  <Typography component={Link} to={`/tasks?taskId=${item.id}`} fontWeight="bold" color="primary" sx={{ textDecoration: 'none' }}>{item.title || 'ללא כותרת'}</Typography>
-                  <Typography variant="body2" color="text.secondary">{taskPriorities.find((option) => option.value === item.priority)?.label || item.priority} | {taskStatuses.find((option) => option.value === item.status)?.label || item.status}</Typography>
+                <Paper key={item.id} role="button" tabIndex={0} aria-label={`פתיחת פרטי המשימה ${item.title || 'ללא כותרת'}`} onClick={() => setSelectedTask(item)} onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault()
+                    setSelectedTask(item)
+                  }
+                }} variant="outlined" style={{ backgroundColor: taskStatusColorValues[taskPriorities.find((priority) => priority.value === item.priority)?.color] || '#ffffff' }} sx={{ p: 1, borderRadius: 1, flex: '0 0 auto', cursor: 'pointer' }}>
+                  <Typography fontWeight="bold" color="primary">{item.title || 'ללא כותרת'}</Typography>
+                  <Typography variant="body2" color="text.secondary">{taskPriorities.find((option) => option.value === item.priority)?.label || item.priority} | {taskStatuses.find((option) => option.value === item.status)?.label || item.status} | תאריך יעד: {formatDate(item.dueDate)}</Typography>
                 </Paper>
               )) : <Typography color="text.secondary">אין משימות פתוחות</Typography>}
             </Stack>
           </Paper>
         </Grid>
         <Grid item xs={12} md={6}>
-          <Paper sx={{ p: 2.5, height: '100%' }}>
+          <Paper sx={{ p: 2.5, height: '32rem', boxSizing: 'border-box', display: 'flex', flexDirection: 'column' }}>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mb: 2 }}>
               <Typography variant="h6" fontWeight="bold">פגישות קרובות</Typography>
               <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+                <Button size="small" variant={showOverdueAppointments ? 'contained' : 'outlined'} onClick={() => setShowOverdueAppointments((current) => !current)}>פגישות שעבר מועדן ({overdueAppointments.length})</Button>
                 <Button size="small" variant={appointmentView === 'today' ? 'contained' : 'outlined'} onClick={() => setAppointmentView('today')}>היום</Button>
                 <Button size="small" variant={appointmentView === 'tomorrow' ? 'contained' : 'outlined'} onClick={() => setAppointmentView('tomorrow')}>מחר</Button>
                 <Button size="small" variant={appointmentView === 'week' ? 'contained' : 'outlined'} onClick={() => setAppointmentView('week')}>השבוע הקרוב</Button>
                 <Button component={Link} to="/appointments" size="small">לכל הפגישות</Button>
               </Box>
             </Box>
-            <Stack spacing={1.25}>
-              {visibleAppointments.length ? visibleAppointments.map((item) => (
-                <Paper key={item.id} variant="outlined" sx={{ p: 1.5, borderRadius: 1 }}>
-                  <Typography component={Link} to={`/appointments?appointmentId=${item.id}`} fontWeight="bold" color="primary" sx={{ textDecoration: 'none' }}>{item.title}</Typography>
+            <Stack className="dashboard-appointment-list" role="region" aria-label="רשימת פגישות קרובות" tabIndex={0} spacing={1.25} sx={{ flex: '1 1 0%', minHeight: 0, boxSizing: 'border-box', overflowY: 'auto', pr: 0.5 }}>
+              {(showOverdueAppointments ? overdueAppointments : visibleAppointments).length ? (showOverdueAppointments ? overdueAppointments : visibleAppointments).map((item) => (
+                <Paper key={item.id} variant="outlined" sx={{ p: 1.5, borderRadius: 1, flex: '0 0 auto' }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
+                    <Typography component={Link} to={`/appointments?appointmentId=${item.id}`} fontWeight="bold" color="primary" sx={{ textDecoration: 'none' }}>{item.title}</Typography>
+                    {(showOverdueAppointments || (appointmentView === 'today' && new Date(item.endTime).getTime() <= appointmentNow)) && <Box sx={{ display: 'flex', gap: 0.75 }}>
+                      <Button size="small" variant="outlined" disabled={updatingAppointmentId === item.id} onClick={() => handleUpdateAppointmentStatus(item, 'COMPLETED')}>הושלמה</Button>
+                      <Button size="small" variant="outlined" color="error" disabled={updatingAppointmentId === item.id} onClick={() => handleUpdateAppointmentStatus(item, 'CANCELLED')}>נדחתה</Button>
+                    </Box>}
+                  </Box>
                   <Typography variant="body2" color="text.secondary">{formatDateTime(item.startTime)}</Typography>
                 </Paper>
-              )) : <Typography color="text.secondary">אין פגישות {appointmentView === 'today' ? 'להיום' : appointmentView === 'tomorrow' ? 'למחר' : 'בשבוע הקרוב'}</Typography>}
+              )) : <Typography color="text.secondary">{showOverdueAppointments ? 'אין פגישות פתוחות שעבר מועדן' : `אין פגישות ${appointmentView === 'today' ? 'להיום' : appointmentView === 'tomorrow' ? 'למחר' : 'בשבוע הקרוב'}`}</Typography>}
             </Stack>
           </Paper>
         </Grid>
       </Grid>}
+      <Dialog className="record-details-dialog" open={Boolean(selectedTask)} onClose={() => setSelectedTask(null)} fullWidth maxWidth="sm">
+        {selectedTask && <>
+          <DialogTitle>{selectedTask.title || 'ללא כותרת'}</DialogTitle>
+          <DialogContent className="record-details-content">
+            <Box className="record-details-grid">
+              <Box className="record-detail-field"><Typography variant="caption">לקוח</Typography><Typography>{customerName(selectedTask.customerId)}</Typography></Box>
+              <Box className="record-detail-field"><Typography variant="caption">סטטוס</Typography><Typography>{taskStatuses.find((option) => option.value === selectedTask.status)?.label || selectedTask.status}</Typography></Box>
+              <Box className="record-detail-field"><Typography variant="caption">עדיפות</Typography><Typography>{taskPriorities.find((option) => option.value === selectedTask.priority)?.label || selectedTask.priority}</Typography></Box>
+              <Box className="record-detail-field"><Typography variant="caption">תאריך יעד</Typography><Typography>{formatDateTime(selectedTask.dueDate)}</Typography></Box>
+              <Box className="record-detail-field record-detail-notes"><Typography variant="caption">הערות</Typography><Typography>{selectedTask.notes || 'אין הערות'}</Typography></Box>
+            </Box>
+            <Typography variant="h6" className="record-details-section-title">משימות משנה ({(selectedTask.subtasks || []).length})</Typography>
+            {(selectedTask.subtasks || []).length === 0 && <Typography variant="body2" color="text.secondary">אין משימות משנה</Typography>}
+            {(selectedTask.subtasks || []).map((subtask, index) => (
+              <Paper key={`${selectedTask.id}-detail-subtask-${index}`} className="record-detail-subtask" sx={{ p: 1.5, display: 'grid', gap: 0.5 }}>
+                <Typography fontWeight="bold">{subtask.title || 'משימת משנה'}{subtask.completed ? ' · הושלמה' : ''}</Typography>
+                <Typography variant="body2" color="text.secondary">התחלה: {formatDateTime(subtask.startDate)} | סיום: {formatDateTime(subtask.dueDate)}</Typography>
+                {subtask.details && <Typography variant="body2">פירוט: {subtask.details}</Typography>}
+                {subtask.notes && <Typography variant="body2">{subtask.notes}</Typography>}
+              </Paper>
+            ))}
+          </DialogContent>
+          <DialogActions className="record-details-actions">
+            <Button onClick={() => setSelectedTask(null)}>סגירה</Button>
+          </DialogActions>
+        </>}
+      </Dialog>
     </Box>
   )
 }

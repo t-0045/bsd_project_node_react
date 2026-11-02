@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react"
 import { useSearchParams } from "react-router-dom"
 
-import { Add, Clear, Delete, Edit, ExpandLess, ExpandMore, Pause, PlayArrow, Stop, Search, Alert, Box, Button, Checkbox, CircularProgress, Dialog, DialogActions,
-  DialogContent, DialogTitle, IconButton, InputAdornment, MenuItem, Paper,
+import { Add, Clear, Delete, Edit, Pause, PlayArrow, Stop, Alert, Box, Button, Checkbox, CircularProgress, Dialog, DialogActions,
+  DialogContent, DialogTitle, IconButton, MenuItem, Paper,
   Stack, TextField, Typography
 } from "../Shared/PrimeUI"
 import { changeSubtaskTimerStatus, createTask, deleteTask, getCustomers, getTasks, updateTask } from "../../api"
-import { formatDateTime } from '../../dateFormat'
+import { formatDate, formatDateTime } from '../../dateFormat'
 import QuickCreateCustomer, { QuickCreateCustomerOption } from '../Customer/QuickCreateCustomer'
 
 const emptyTask = { customerId: '', title: '', priority: 'MEDIUM', status: 'OPEN', dueDate: '', notes: '', subtasks: [] }
@@ -258,13 +258,13 @@ const TasksList = ({ user, picklists }) => {
   if (isLoading) return <Box display="flex" justifyContent="center" alignItems="center" minHeight="50vh"><CircularProgress /></Box>
 
   return (
-    <Box sx={{ position: 'relative' }}>
+    <Box className="tasks-page" sx={{ position: 'relative' }}>
       <Box className="list-page-heading">
         <Typography variant="h4" component="h1" gutterBottom fontWeight="bold" color="primary">משימות</Typography>
         <Button className="list-page-add-button" variant="contained" startIcon={<Add />} onClick={openAdd}>משימה חדשה</Button>
       </Box>
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-      <Paper sx={{ p: 2, mb: 3 }}>
+      <Paper className="list-filter-panel" sx={{ p: 2, mb: 3 }}>
         <Typography variant="h6" sx={{ mb: 1.5 }}>חיפוש וסינון משימות</Typography>
         <Stack className="list-search-controls" direction="row" sx={{ width: '100%', direction: 'rtl' }}>
           <TextField
@@ -273,10 +273,9 @@ const TasksList = ({ user, picklists }) => {
             placeholder="כותרת, לקוח, הערות..."
             value={filters.text}
             onChange={(event) => updateFilter('text', event.target.value)}
-            InputProps={{ startAdornment: <InputAdornment position="start"><Search color="action" /></InputAdornment> }}
             sx={{ width: '100%' }}
           />
-          <Button className="advanced-search-button" variant="outlined" startIcon={isAdvancedSearchOpen ? <ExpandLess /> : <ExpandMore />} onClick={() => setIsAdvancedSearchOpen((openState) => !openState)}>{isAdvancedSearchOpen ? 'סגירת חיפוש מתקדם' : 'חיפוש מתקדם'}</Button>
+          <Button className="advanced-search-button" variant="outlined" onClick={() => setIsAdvancedSearchOpen((openState) => !openState)}>{isAdvancedSearchOpen ? 'סגירת חיפוש מתקדם' : 'חיפוש מתקדם'}</Button>
           <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'nowrap', flex: '0 0 auto' }}>{filteredTasks.length} משימות</Typography>
         </Stack>
         {isAdvancedSearchOpen && <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)', xl: 'repeat(4, 1fr)' }, gap: 1, mt: 1.5 }}>
@@ -288,6 +287,7 @@ const TasksList = ({ user, picklists }) => {
           <Button startIcon={<Clear />} onClick={clearFilters} disabled={!Object.values(filters).some(Boolean)}>ניקוי מסננים</Button>
         </Box>}
       </Paper>
+      <Box className="tasks-scroll-area">
       <Stack spacing={2} sx={{ mb: 4 }}>
         {filteredTasks.map((item) => (
           <Paper key={item.id} elevation={1} role="button" tabIndex={0} aria-label={`פתיחת פרטי המשימה ${item.title || 'ללא כותרת'}`} onClick={(event) => {
@@ -302,8 +302,7 @@ const TasksList = ({ user, picklists }) => {
             <Box sx={{ flex: 1 }}>
               <Typography fontWeight="bold">{item.title || 'ללא כותרת'}</Typography>
               <Typography variant="body2" color="text.secondary">לקוח: {customers.find((customer) => customer.id === item.customerId)?.fullName || 'ללא'}</Typography>
-              <Typography variant="body2" color="text.secondary">עדיפות: {taskPriorities.find((option) => option.value === item.priority)?.label || item.priority} | סטטוס: {taskStatuses.find((option) => option.value === item.status)?.label || item.status}</Typography>
-              <Typography variant="body2" color="text.secondary">תאריך יעד: {formatDateTime(item.dueDate)}</Typography>
+              <Typography variant="body2" color="text.secondary">עדיפות: {taskPriorities.find((option) => option.value === item.priority)?.label || item.priority} | סטטוס: {taskStatuses.find((option) => option.value === item.status)?.label || item.status} | תאריך יעד: {formatDate(item.dueDate)}</Typography>
               <Typography variant="body2" color="text.secondary">הערות: {item.notes || 'ללא'}</Typography>
               <Stack spacing={0.25} sx={{ mt: 1 }}>
                 {(item.subtasks || []).map((subtask, subtaskIndex) => (
@@ -331,6 +330,7 @@ const TasksList = ({ user, picklists }) => {
           </Paper>
         ))}
       </Stack>
+      </Box>
       <Dialog className="record-details-dialog" open={Boolean(detailsTask)} onClose={() => setDetailsTask(null)} fullWidth maxWidth="sm">
         {detailsTask && <>
           <DialogTitle>{detailsTask.title || 'ללא כותרת'}</DialogTitle>

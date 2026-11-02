@@ -5,15 +5,15 @@ const defaultPicklists = {
         { value: 'INACTIVE', label: 'לא פעיל', system: true }
     ],
     taskStatus: [
-        { value: 'OPEN', label: 'פתוחה', color: 'teal', system: true },
-        { value: 'IN_PROGRESS', label: 'בתהליך', color: 'blue', system: true },
-        { value: 'COMPLETED', label: 'הושלמה', color: 'green', system: true }
+        { value: 'OPEN', label: 'פתוחה', system: true },
+        { value: 'IN_PROGRESS', label: 'בתהליך', system: true },
+        { value: 'COMPLETED', label: 'הושלמה', system: true }
     ],
     taskPriority: [
-        { value: 'LOW', label: 'נמוכה', system: true },
-        { value: 'MEDIUM', label: 'בינונית', system: true },
-        { value: 'HIGH', label: 'גבוהה', system: true },
-        { value: 'URGENT', label: 'דחופה', system: true }
+        { value: 'LOW', label: 'נמוכה', color: 'teal', system: true },
+        { value: 'MEDIUM', label: 'בינונית', color: 'amber', system: true },
+        { value: 'HIGH', label: 'גבוהה', color: 'orange', system: true },
+        { value: 'URGENT', label: 'דחופה', color: 'rose', system: true }
     ],
     appointmentStatus: [
         { value: 'SCHEDULED', label: 'מתוכננת', system: true },
@@ -37,11 +37,11 @@ const getEffectivePicklists = (picklists = {}) => Object.fromEntries(
         const mergedDefaults = defaults.map((option) => ({
             ...option,
             label: savedByValue.get(option.value)?.label || option.label,
-            ...(key === 'taskStatus' ? { color: savedByValue.get(option.value)?.color || option.color } : {})
+            ...(key === 'taskPriority' ? { color: savedByValue.get(option.value)?.color || option.color } : {})
         }))
         const customOptions = savedOptions
             .filter((option) => !defaults.some((item) => item.value === option.value))
-            .map((option, index) => key === 'taskStatus'
+            .map((option, index) => key === 'taskPriority'
                 ? { ...option, color: taskStatusColors.includes(option.color) ? option.color : taskStatusColors[index % taskStatusColors.length] }
                 : option)
         return [key, [...mergedDefaults, ...customOptions]]

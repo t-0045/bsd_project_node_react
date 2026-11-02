@@ -735,6 +735,12 @@ input[type='radio'] {
 	box-sizing: border-box;
 }
 
+.calendar-hour-select select {
+	appearance: none;
+	-webkit-appearance: none;
+	background-image: none;
+}
+
 .auth-card form > button {
 	width: 100%;
 }
@@ -768,6 +774,27 @@ input[type='radio'] {
 .dashboard-page .p-surface {
 	box-sizing: border-box;
 	margin-bottom: 0;
+}
+
+.dashboard-summary-card {
+	height: 8.25rem;
+	width: 100%;
+	min-width: 0;
+	box-sizing: border-box;
+}
+
+.dashboard-summary-card .p-card-content {
+	height: 100%;
+	box-sizing: border-box;
+}
+
+.dashboard-summary-card p {
+	margin: 0;
+}
+
+.dashboard-active-timer-details,
+.dashboard-active-timer-controls {
+	flex-wrap: wrap;
 }
 
 .p-grid-item {
@@ -834,8 +861,9 @@ label:has(.p-radiobutton) {
 .customers-page {
 	--customer-accent: #286c62;
 	--customer-accent-soft: #eaf3f0;
-	max-width: 62rem;
-	margin-inline: auto;
+	width: 100%;
+	max-width: none;
+	box-sizing: border-box;
 }
 
 .customers-heading,
@@ -893,10 +921,10 @@ label:has(.p-radiobutton) {
 
 .appointments-content-panel {
 	padding: 1rem;
-	border: 1px solid var(--line);
+	/* border: 1px solid var(--line);
 	border-radius: 9px;
 	background: var(--paper);
-	box-shadow: var(--shadow);
+	box-shadow: var(--shadow); */
 }
 
 .list-search-controls {
@@ -928,12 +956,22 @@ label:has(.p-radiobutton) {
 	font-size: 1rem;
 }
 
+.customers-search-panel,
 .customers-content-panel {
-	padding: 1rem;
+	box-sizing: border-box;
 	border: 1px solid var(--line);
 	border-radius: 9px;
 	background: var(--paper);
 	box-shadow: var(--shadow);
+}
+
+.customers-search-panel {
+	padding: 1rem;
+	margin-bottom: 1rem;
+}
+
+.customers-content-panel {
+	padding: 1rem;
 }
 
 .advanced-search-button {

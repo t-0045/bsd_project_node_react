@@ -5,7 +5,7 @@ import { updatePersonalDetails, updatePicklists, updateProfileImage, updateSyste
 
 const MAX_IMAGE_SIZE = 2 * 1024 * 1024
 const ALLOWED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp']
-const TASK_STATUS_COLORS = [
+const TASK_PRIORITY_COLORS = [
   { id: 'rose', name: 'ורוד', value: '#f8e5e8' },
   { id: 'red', name: 'אדום', value: '#f8e2df' },
   { id: 'orange', name: 'כתום', value: '#fbe9dc' },
@@ -505,8 +505,8 @@ const SettingsPage = ({ user, onUserUpdate, picklists, onPicklistsUpdate }) => {
                           inputProps={{ maxLength: 60 }}
                           fullWidth
                         />
-                        {key === 'taskStatus' && <Box className="settings-picklist-colors" role="radiogroup" aria-label={`צבע לסטטוס ${option.label}`} sx={{ display: 'flex', gap: 0.75, flex: '0 0 auto' }}>
-                          {TASK_STATUS_COLORS.map((color) => <Button
+                        {key === 'taskPriority' && <Box className="settings-picklist-colors" role="radiogroup" aria-label={`צבע לעדיפות ${option.label}`} sx={{ display: 'flex', gap: 0.75, flex: '0 0 auto' }}>
+                          {TASK_PRIORITY_COLORS.map((color) => <Button
                             key={color.id}
                             type="button"
                             className="settings-picklist-color-swatch"

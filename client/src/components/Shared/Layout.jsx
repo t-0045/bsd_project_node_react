@@ -10,7 +10,9 @@ const Layout = ({ user, onLogout }) => {
       sx={{
         display: 'flex',
         flexDirection: 'column',
-        minHeight: '100vh'
+        height: '100vh',
+        height: '100dvh',
+        overflow: 'hidden'
       }}
     >
       <Header user={user} onLogout={onLogout} />
@@ -18,7 +20,9 @@ const Layout = ({ user, onLogout }) => {
         component="main"
         maxWidth="xl"
         sx={{
-          flexGrow: 1,
+          flex: '1 1 0',
+          minHeight: 0,
+          overflow: 'hidden',
           py: 4,
           display: 'flex',
           flexDirection: 'column'

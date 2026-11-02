@@ -9,7 +9,7 @@ const spacingProperties = {
   p: ['padding'], px: ['paddingInline'], py: ['paddingBlock'], pt: ['paddingTop'], pb: ['paddingBottom'], pl: ['paddingLeft'], pr: ['paddingRight'],
   m: ['margin'], mx: ['marginInline'], my: ['marginBlock'], mt: ['marginTop'], mb: ['marginBottom'], ml: ['marginLeft'], mr: ['marginRight']
 }
-const styleProperties = ['display', 'position', 'flexDirection', 'flex', 'flexGrow', 'alignItems', 'alignSelf', 'justifyContent', 'gap', 'gridTemplateColumns', 'height', 'minHeight', 'minWidth', 'maxWidth', 'width', 'top', 'right', 'bottom', 'left', 'zIndex', 'overflow', 'background', 'cursor']
+const styleProperties = ['display', 'position', 'flexDirection', 'flex', 'flexGrow', 'alignItems', 'alignSelf', 'justifyContent', 'gap', 'gridTemplateColumns', 'height', 'minHeight', 'maxHeight', 'minWidth', 'maxWidth', 'width', 'top', 'right', 'bottom', 'left', 'zIndex', 'overflow', 'overflowY', 'background', 'cursor']
 
 const spacingValue = (value) => typeof value === 'number' ? `${value * 0.5}rem` : value
 const cssValue = (key, value) => key === 'gap' ? spacingValue(value) : value

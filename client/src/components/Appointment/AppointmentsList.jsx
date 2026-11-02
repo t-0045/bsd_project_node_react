@@ -357,7 +357,7 @@ const AppointmentsList = ({ picklists, user, onUserUpdate }) => {
       </Paper>
       <Paper sx={{ p: 2, mb: 3, overflow: 'auto' }}>
         <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2, minWidth: 500 }}>
-          <Stack direction="row" alignItems="center"><IconButton onClick={() => moveCalendar(-1)} aria-label="הקודם"><ChevronRight /></IconButton><IconButton onClick={() => moveCalendar(1)} aria-label="הבא"><ChevronLeft /></IconButton><Button onClick={() => setCalendarDate(new Date())}>היום</Button></Stack>
+          <Stack direction="row" alignItems="center"><IconButton onClick={() => moveCalendar(-1)} aria-label="הקודם"><ChevronLeft /></IconButton><IconButton onClick={() => moveCalendar(1)} aria-label="הבא"><ChevronRight /></IconButton><Button onClick={() => setCalendarDate(new Date())}>היום</Button></Stack>
           <Typography fontWeight="bold">{calendarTitle}</Typography>
         </Stack>
         <Tabs value={calendarView} onChange={(_, value) => saveCalendarView(value)} sx={{ mb: 2 }}><Tab value="day" label="יום" /><Tab value="week" label="שבוע" /><Tab value="month" label="חודש" /></Tabs>
@@ -366,13 +366,13 @@ const AppointmentsList = ({ picklists, user, onUserUpdate }) => {
           <Button size="small" variant={calendarType === 'hebrew' ? 'contained' : 'outlined'} onClick={() => saveCalendarType('hebrew')}>עברי</Button>
         </Stack>
         {(calendarView === 'day' || calendarView === 'week') && <Stack direction="row" spacing={2} sx={{ mb: 2, maxWidth: 420 }}>
-          <TextField select label="משעה" value={dayStartHour} onChange={({ target }) => {
+          <TextField className="calendar-hour-select" select label="משעה" value={dayStartHour} onChange={({ target }) => {
             const startHour = Number(target.value)
             void saveCalendarHours(startHour, startHour >= dayEndHour ? Math.min(startHour + 1, 24) : dayEndHour)
           }} size="small" fullWidth>
             {Array.from({ length: 24 }, (_, hour) => <MenuItem key={hour} value={hour}>{`${pad(hour)}:00`}</MenuItem>)}
           </TextField>
-          <TextField select label="עד שעה" value={dayEndHour} onChange={({ target }) => {
+          <TextField className="calendar-hour-select" select label="עד שעה" value={dayEndHour} onChange={({ target }) => {
             const endHour = Number(target.value)
             void saveCalendarHours(endHour <= dayStartHour ? Math.max(endHour - 1, 0) : dayStartHour, endHour)
           }} size="small" fullWidth>
