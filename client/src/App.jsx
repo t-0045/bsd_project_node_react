@@ -8,7 +8,7 @@ import CustomersList from './components/Customer/CustomersList'
 import TasksList from './components/Task/TasksList'
 import AppointmentsList from './components/Appointment/AppointmentsList'
 import SettingsPage from './components/Shared/SettingsPage'
-import { getCurrentUser, getPicklists } from './api'
+import { AUTH_EXPIRED_EVENT, getCurrentUser, getPicklists } from './api'
 import defaultPicklists from './picklists'
 
 const PageTitle = () => {
@@ -35,6 +35,12 @@ const AppContent = () => {
   const [user, setUser] = useState(null)
   const [picklists, setPicklists] = useState(defaultPicklists)
   const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    const handleAuthExpired = () => setUser(null)
+    window.addEventListener(AUTH_EXPIRED_EVENT, handleAuthExpired)
+    return () => window.removeEventListener(AUTH_EXPIRED_EVENT, handleAuthExpired)
+  }, [])
 
   useEffect(() => {
     if (!localStorage.getItem('accessToken')) {

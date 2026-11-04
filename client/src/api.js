@@ -5,6 +5,12 @@ const api = axios.create({
   withCredentials: true,
 })
 
+const AUTH_EXPIRED_EVENT = 'auth:expired'
+const expiredTokenMessages = [
+  'Access token is required',
+  'Invalid or expired access token',
+]
+
 const apiErrorTranslations = {
   'email, password and businessName are required': 'יש למלא כתובת אימייל, סיסמה ושם עסק',
   'Password must be at least 8 characters long': 'הסיסמה חייבת להכיל לפחות 8 תווים',
@@ -71,6 +77,13 @@ api.interceptors.response.use(
   (error) => {
     const data = error.response?.data
     const serverMessage = typeof data === 'string' ? data : data?.error
+
+    if (error.response?.status === 401 && expiredTokenMessages.includes(serverMessage)) {
+      localStorage.removeItem('accessToken')
+      window.dispatchEvent(new Event(AUTH_EXPIRED_EVENT))
+      error.isAuthExpired = true
+      return Promise.reject(error)
+    }
 
     if (!serverMessage) {
       if (!error.response) error.message = 'לא ניתן להתחבר לשרת. בדקו את החיבור ונסו שוב'
@@ -233,6 +246,7 @@ const updateAppointment = async (id, appointment) => {
 const deleteAppointment = async (id) => api.delete(`/appointments/${id}`)
 
 export {
+  AUTH_EXPIRED_EVENT,
   loginUser, registerUser, verifyEmail, getCurrentUser, updateProfileImage, changePassword, updatePersonalDetails, updateSystemSettings, getPicklists, updatePicklists, logoutUser, getHealth,
   getCustomers, createCustomer, updateCustomer, deleteCustomer,
   getTasks, createTask, updateTask, deleteTask, changeSubtaskTimerStatus,

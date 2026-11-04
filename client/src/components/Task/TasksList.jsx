@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react"
 import { useSearchParams } from "react-router-dom"
 
-import { Add, Clear, Delete, Edit, Pause, PlayArrow, Stop, Alert, Box, Button, Checkbox, CircularProgress, Dialog, DialogActions,
+import { AccessTime, Add, Clear, Delete, Edit, Pause, PlayArrow, Stop, Alert, Box, Button, Checkbox, CircularProgress, Dialog, DialogActions,
   DialogContent, DialogTitle, IconButton, MenuItem, Paper,
   Stack, TextField, Typography
 } from "../Shared/PrimeUI"
 import { changeSubtaskTimerStatus, createTask, deleteTask, getCustomers, getTasks, updateTask } from "../../api"
 import { formatDate, formatDateTime } from '../../dateFormat'
+import taskStatusColorValues, { taskAccentColors } from '../../taskStatusColors'
 import QuickCreateCustomer, { QuickCreateCustomerOption } from '../Customer/QuickCreateCustomer'
 
 const emptyTask = { customerId: '', title: '', priority: 'MEDIUM', status: 'OPEN', dueDate: '', notes: '', subtasks: [] }
@@ -27,6 +28,10 @@ const formatDuration = (seconds) => {
   const remainingSeconds = seconds % 60
   return [hours, minutes, remainingSeconds].map((value) => String(value).padStart(2, '0')).join(':')
 }
+
+const timerLabels = { PAUSED: 'מושהה', RUNNING: 'פעיל', COMPLETED: 'הושלם' }
+
+const isOverdue = (item) => Boolean(item.dueDate) && item.status !== 'COMPLETED' && new Date(item.dueDate).getTime() < Date.now()
 
 const TasksList = ({ user, picklists }) => {
   const includeSubtaskTimers = user?.includeSubtaskTimers !== false
@@ -227,25 +232,29 @@ const TasksList = ({ user, picklists }) => {
   }
 
   const handleToggleSubtask = async (selectedTaskItem, subtaskIndex) => {
+    const selectedSubtask = selectedTaskItem.subtasks?.[subtaskIndex]
+    // A completed subtask is final: it cannot be un-completed and its timer stays closed.
+    if (!selectedSubtask || selectedSubtask.completed) return
+    setError('')
     try {
-      const selectedSubtask = selectedTaskItem.subtasks?.[subtaskIndex]
-      const isCompleting = selectedSubtask && !selectedSubtask.completed
       let taskToUpdate = selectedTaskItem
 
-      if (isCompleting && selectedSubtask.status !== 'COMPLETED') {
+      if (selectedSubtask.status !== 'COMPLETED') {
         taskToUpdate = await changeSubtaskTimerStatus(selectedTaskItem.id, subtaskIndex, 'complete')
       }
 
       const subtasks = (taskToUpdate.subtasks || []).map((subtask, index) => (
-        index === subtaskIndex ? { ...subtask, completed: !selectedSubtask.completed } : subtask
+        index === subtaskIndex ? { ...subtask, completed: true } : subtask
       ))
       await updateTask(selectedTaskItem.id, { subtasks })
       const allSubtasksCompleted = subtasks.length > 0 && subtasks.every((subtask) => subtask.completed)
-      if (isCompleting && allSubtasksCompleted && selectedTaskItem.status !== 'COMPLETED') {
+      if (allSubtasksCompleted && selectedTaskItem.status !== 'COMPLETED') {
         setCompletionQuestion({ taskId: selectedTaskItem.id, taskTitle: selectedTaskItem.title })
       }
       fetchTasks()
-    } catch (requestError) { setError(requestError.response?.data?.error || 'עדכון תת־המשימה נכשל') }
+    } catch (requestError) {
+      setError(requestError.response?.data?.error || 'עדכון תת־המשימה נכשל')
+    }
   }
 
   const handleSubtaskTimer = async (selectedTaskItem, subtaskIndex, action) => {
@@ -263,7 +272,7 @@ const TasksList = ({ user, picklists }) => {
         <Typography variant="h4" component="h1" gutterBottom fontWeight="bold" color="primary">משימות</Typography>
         <Button className="list-page-add-button" variant="contained" startIcon={<Add />} onClick={openAdd}>משימה חדשה</Button>
       </Box>
-      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      {error && <Box className="page-toast"><Alert severity="error">{error}</Alert><button type="button" aria-label="סגירת הודעה" onClick={() => setError('')}>×</button></Box>}
       <Paper className="list-filter-panel" sx={{ p: 2, mb: 3 }}>
         <Typography variant="h6" sx={{ mb: 1.5 }}>חיפוש וסינון משימות</Typography>
         <Stack className="list-search-controls" direction="row" spacing={2} sx={{ width: '100%', direction: 'rtl' }}>
@@ -289,47 +298,83 @@ const TasksList = ({ user, picklists }) => {
         </Box>}
       </Paper>
       <Box className="tasks-scroll-area">
-      <Stack spacing={2} sx={{ mb: 4 }}>
-        {filteredTasks.map((item) => (
-          <Paper key={item.id} elevation={1} role="button" tabIndex={0} aria-label={`פתיחת פרטי המשימה ${item.title || 'ללא כותרת'}`} onClick={(event) => {
-            if (event.target.closest('button, input, label')) return
-            setDetailsTask(item)
-          }} onKeyDown={(event) => {
-            if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) {
-              event.preventDefault()
+      <Stack className="task-cards" spacing={2} sx={{ mb: 4 }}>
+        {filteredTasks.length === 0 && <Typography className="task-empty">לא נמצאו משימות</Typography>}
+        {filteredTasks.map((item) => {
+          const priorityOption = taskPriorities.find((option) => option.value === item.priority)
+          const statusOption = taskStatuses.find((option) => option.value === item.status)
+          const subtasks = item.subtasks || []
+          const doneCount = subtasks.filter((subtask) => subtask.completed).length
+          const progress = subtasks.length ? Math.round((doneCount / subtasks.length) * 100) : 0
+          const overdue = isOverdue(item)
+          return (
+          <Paper key={item.id} elevation={1} role="button" tabIndex={0} aria-label={`פתיחת פרטי המשימה ${item.title || 'ללא כותרת'}`}
+            className={`task-card${item.status === 'COMPLETED' ? ' is-completed' : ''}`}
+            data-status={item.status}
+            style={{ '--task-accent': taskAccentColors[priorityOption?.color] || '#9aa8b1' }}
+            onClick={(event) => {
+              if (event.target.closest('button, input, label')) return
               setDetailsTask(item)
-            }
-          }} sx={{ p: 2, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 2, cursor: 'pointer' }}>
-            <Box sx={{ flex: 1 }}>
-              <Typography fontWeight="bold">{item.title || 'ללא כותרת'}</Typography>
-              <Typography variant="body2" color="text.secondary">לקוח: {customers.find((customer) => customer.id === item.customerId)?.fullName || 'ללא'}</Typography>
-              <Typography variant="body2" color="text.secondary">עדיפות: {taskPriorities.find((option) => option.value === item.priority)?.label || item.priority} | סטטוס: {taskStatuses.find((option) => option.value === item.status)?.label || item.status} | תאריך יעד: {formatDate(item.dueDate)}</Typography>
-              <Typography variant="body2" color="text.secondary">הערות: {item.notes || 'ללא'}</Typography>
-              <Stack spacing={0.25} sx={{ mt: 1 }}>
-                {(item.subtasks || []).map((subtask, subtaskIndex) => (
-                  <Box key={`${item.id}-subtask-${subtaskIndex}`} sx={{ display: 'flex', alignItems: 'center' }}>
-                    <Checkbox size="small" checked={Boolean(subtask.completed)} onChange={() => handleToggleSubtask(item, subtaskIndex)} />
-                    <Box sx={{ flex: 1 }}>
-                      <Typography variant="body2" sx={{ textDecoration: subtask.completed ? 'line-through' : 'none' }}>{subtaskTypes.find((option) => option.value === subtask.type)?.label || subtask.title} | התחלה: {formatDateTime(subtask.startDate)} | סיום: {formatDateTime(subtask.dueDate)}</Typography>
-                      {subtask.details && <Typography variant="caption" color="text.secondary">פירוט: {subtask.details}</Typography>}
-                      {subtask.notes && <Typography variant="caption" color="text.secondary">הערה: {subtask.notes}</Typography>}
-                      {includeSubtaskTimers && <Typography variant="caption" color="text.secondary">טיימר: {{ PAUSED: 'מושהה', RUNNING: 'פעיל', COMPLETED: 'הושלם' }[subtask.status] || 'מושהה'} | זמן כולל: {formatDuration(getSubtaskDuration(subtask))}</Typography>}
-                    </Box>
+            }} onKeyDown={(event) => {
+              if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) {
+                event.preventDefault()
+                setDetailsTask(item)
+              }
+            }}>
+            <Box className="task-card-header">
+              <Box className="task-card-heading">
+                <Typography component="h3" className="task-card-title">{item.title || 'ללא כותרת'}</Typography>
+                <Box className="task-card-badges">
+                  <span className="task-badge task-badge-priority" style={{ backgroundColor: taskStatusColorValues[priorityOption?.color] || '#e9eef1' }}>{priorityOption?.label || item.priority}</span>
+                  <span className="task-badge task-badge-status" data-status={item.status}>{statusOption?.label || item.status}</span>
+                </Box>
+              </Box>
+              <IconButton className="task-card-delete" color="error" aria-label="מחיקת משימה" onClick={() => handleDelete(item.id)}><Delete /></IconButton>
+            </Box>
+
+            <Box className="task-card-meta">
+              <Box className="task-meta-item"><span className="task-meta-label">לקוח</span><span className="task-meta-value">{customerName(item.customerId) || 'ללא'}</span></Box>
+              <Box className={`task-meta-item${overdue ? ' is-overdue' : ''}`}><span className="task-meta-label">תאריך יעד</span><span className="task-meta-value">{formatDate(item.dueDate)}{overdue ? ' · באיחור' : ''}</span></Box>
+              <Box className="task-meta-item"><span className="task-meta-label">משימות משנה</span><span className="task-meta-value">{subtasks.length ? `${doneCount} מתוך ${subtasks.length}` : 'אין'}</span></Box>
+            </Box>
+
+            {item.notes && <Typography className="task-card-notes">{item.notes}</Typography>}
+
+            {subtasks.length > 0 && <Box className="task-progress" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress} aria-label="התקדמות משימות המשנה"><span style={{ width: `${progress}%` }} /></Box>}
+
+            {subtasks.length > 0 && <Box className="task-subtasks">
+              {subtasks.map((subtask, subtaskIndex) => (
+                <Box key={`${item.id}-subtask-${subtaskIndex}`} className={`task-subtask${subtask.completed ? ' is-done' : ''}${subtask.status === 'RUNNING' ? ' is-running' : ''}`}>
+                  <Checkbox size="small" checked={Boolean(subtask.completed)} disabled={Boolean(subtask.completed)} title={subtask.completed ? 'תת־משימה שהושלמה לא ניתנת לביטול' : undefined} onChange={() => handleToggleSubtask(item, subtaskIndex)} aria-label="סימון תת־משימה כהושלמה" />
+                  <Box className="task-subtask-body">
+                    <Typography className="task-subtask-title">{subtaskTypes.find((option) => option.value === subtask.type)?.label || subtask.title}</Typography>
+                    <Typography className="task-subtask-dates">{formatDateTime(subtask.startDate)} ← {formatDateTime(subtask.dueDate)}</Typography>
+                    {subtask.details && <Typography className="task-subtask-note">פירוט: {subtask.details}</Typography>}
+                    {subtask.notes && <Typography className="task-subtask-note">{subtask.notes}</Typography>}
+                    {includeSubtaskTimers && <span className={`task-timer task-timer-${subtask.status || 'PAUSED'}`} title="זמן עבודה מצטבר">
+                      <AccessTime />
+                      <span className="task-timer-state">{timerLabels[subtask.status] || 'מושהה'}</span>
+                      <span className="task-timer-time">{formatDuration(getSubtaskDuration(subtask))}</span>
+                    </span>}
+                  </Box>
+                  <Box className="task-subtask-actions">
                     <IconButton size="small" aria-label={`עריכת תת־משימה ${subtask.title || subtaskIndex + 1}`} disabled={subtask.completed} onClick={() => openEditSubtask(item, subtaskIndex)}><Edit /></IconButton>
-                    {includeSubtaskTimers && <Box>
+                    {includeSubtaskTimers && !subtask.completed && <>
                       {subtask.status !== 'RUNNING' && subtask.status !== 'COMPLETED' && <IconButton size="small" color="success" aria-label={subtask.status === 'PAUSED' && subtask.sessions?.length ? 'המשך טיימר' : 'הפעל טיימר'} onClick={() => handleSubtaskTimer(item, subtaskIndex, 'start')}><PlayArrow /></IconButton>}
                       {subtask.status === 'RUNNING' && <IconButton size="small" color="warning" aria-label="השהה טיימר" onClick={() => handleSubtaskTimer(item, subtaskIndex, 'pause')}><Pause /></IconButton>}
                       {subtask.status !== 'COMPLETED' && <IconButton size="small" color="error" aria-label="סיים טיימר" onClick={() => handleSubtaskTimer(item, subtaskIndex, 'complete')}><Stop /></IconButton>}
-                    </Box>}
+                    </>}
                   </Box>
-                ))}
-                <Typography variant="body2" color="text.secondary">משימות משנה: {(item.subtasks || []).length}</Typography>
-                <Button className="task-subtask-add-button" size="small" startIcon={<Add />} onClick={() => openAddSubtask(item)} disabled={item.status === 'COMPLETED'}>הוספת משימת משנה</Button>
-              </Stack>
+                </Box>
+              ))}
+            </Box>}
+
+            <Box className="task-card-footer">
+              <Button className="task-subtask-add-button" size="small" startIcon={<Add />} onClick={() => openAddSubtask(item)} disabled={item.status === 'COMPLETED'}>הוספת משימת משנה</Button>
             </Box>
-            <Box sx={{ display: 'flex', gap: 0.5 }}><IconButton color="error" aria-label="מחיקת משימה" onClick={() => handleDelete(item.id)}><Delete /></IconButton></Box>
           </Paper>
-        ))}
+          )
+        })}
       </Stack>
       </Box>
       <Dialog className="record-details-dialog" open={Boolean(detailsTask)} onClose={() => setDetailsTask(null)} fullWidth maxWidth="sm">
@@ -351,13 +396,13 @@ const TasksList = ({ user, picklists }) => {
                 <Typography variant="body2" color="text.secondary">התחלה: {formatDateTime(subtask.startDate)} | סיום: {formatDateTime(subtask.dueDate)}</Typography>
                 {subtask.details && <Typography variant="body2">פירוט: {subtask.details}</Typography>}
                 {subtask.notes && <Typography variant="body2">{subtask.notes}</Typography>}
+                {includeSubtaskTimers && <Typography variant="body2" color="text.secondary">טיימר: {timerLabels[subtask.status] || 'מושהה'} · {formatDuration(getSubtaskDuration(subtask))}</Typography>}
               </Paper>
             ))}
           </DialogContent>
           <DialogActions className="record-details-actions">
             <Button color="error" startIcon={<Delete />} onClick={() => handleDelete(detailsTask.id)}>מחיקה</Button>
             <Button startIcon={<Edit />} onClick={() => { const taskToEdit = detailsTask; setDetailsTask(null); openEdit(taskToEdit) }}>עריכה</Button>
-            <Button onClick={() => setDetailsTask(null)}>סגירה</Button>
           </DialogActions>
         </>}
       </Dialog>

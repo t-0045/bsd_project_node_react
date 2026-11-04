@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 
-import { AccessTime, Event, Pause, People, Stop, TaskAlt, Alert, Box, Button, Card, CardContent, CircularProgress, Clear, Dialog, DialogActions, DialogContent, DialogTitle, Grid, IconButton, Paper, Stack, Typography } from "../Shared/PrimeUI"
+import { AccessTime, Event, Pause, People, Stop, TaskAlt, Alert, Box, Button, Card, CardContent, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, Grid, Paper, Stack, Typography } from "../Shared/PrimeUI"
 import { changeSubtaskTimerStatus, getAppointments, getCustomers, getTasks, updateAppointment } from "../../api"
 import { formatDate, formatDateTime } from '../../dateFormat'
 import taskStatusColorValues from '../../taskStatusColors'
@@ -245,7 +245,7 @@ const Dashboard = ({ user, picklists }) => {
       </Grid>}
       <Dialog className="record-details-dialog" open={Boolean(selectedTask)} onClose={() => setSelectedTask(null)} fullWidth maxWidth="sm">
         {selectedTask && <>
-          <DialogTitle><span>{selectedTask.title || 'ללא כותרת'}</span><IconButton className="dialog-close-button" aria-label="סגירה" onClick={() => setSelectedTask(null)}><Clear /></IconButton></DialogTitle>
+          <DialogTitle>{selectedTask.title || 'ללא כותרת'}</DialogTitle>
           <DialogContent className="record-details-content">
             <Box className="record-details-grid">
               <Box className="record-detail-field"><Typography variant="caption">לקוח</Typography><Typography>{customerName(selectedTask.customerId)}</Typography></Box>
@@ -272,7 +272,7 @@ const Dashboard = ({ user, picklists }) => {
       </Dialog>
       <Dialog className="record-details-dialog" open={Boolean(selectedAppointment)} onClose={() => setSelectedAppointment(null)} fullWidth maxWidth="sm">
         {selectedAppointment && <>
-          <DialogTitle><span>{selectedAppointment.title || 'ללא כותרת'}</span><IconButton className="dialog-close-button" aria-label="סגירה" onClick={() => setSelectedAppointment(null)}><Clear /></IconButton></DialogTitle>
+          <DialogTitle>{selectedAppointment.title || 'ללא כותרת'}</DialogTitle>
           <DialogContent className="record-details-content">
             <Box className="record-details-grid">
               <Box className="record-detail-field"><Typography variant="caption">לקוח</Typography><Typography>{selectedAppointment.customerId ? customerName(selectedAppointment.customerId) : 'ללא לקוח'}</Typography></Box>

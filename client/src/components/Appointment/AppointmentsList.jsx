@@ -413,7 +413,6 @@ const AppointmentsList = ({ picklists, user, onUserUpdate }) => {
           <DialogActions className="record-details-actions">
             <Button color="error" startIcon={<Delete />} onClick={() => handleDelete(detailsAppointment.id)}>מחיקה</Button>
             <Button startIcon={<Edit />} onClick={() => { const appointmentToEdit = detailsAppointment; setDetailsAppointment(null); openEdit(appointmentToEdit) }}>עריכה</Button>
-            <Button onClick={() => setDetailsAppointment(null)}>סגירה</Button>
           </DialogActions>
         </>}
       </Dialog>

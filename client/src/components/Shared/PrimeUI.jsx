@@ -1,4 +1,4 @@
-import { Children, cloneElement, createContext, isValidElement, useContext, useEffect } from 'react'
+import { Children, cloneElement, createContext, isValidElement, useContext, useEffect, useId } from 'react'
 import { createPortal } from 'react-dom'
 
 /* eslint-disable react-refresh/only-export-components */
@@ -119,22 +119,62 @@ export const InputAdornment = ({ children }) => children
 export const Alert = ({ children, severity = 'info', ...props }) => <div role={severity === 'error' ? 'alert' : 'status'} {...cleanProps(props, ['sx'])}>{children}</div>
 export const CircularProgress = () => <span role="status" aria-label="טוען">טוען...</span>
 
+const DialogContext = createContext(null)
+let scrollLockCount = 0
+let previousBodyStyle = null
+
+const lockPageScroll = () => {
+  if (scrollLockCount === 0) {
+    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth
+    const side = document.documentElement.dir === 'rtl' ? 'paddingLeft' : 'paddingRight'
+    previousBodyStyle = { overflow: document.body.style.overflow, [side]: document.body.style[side], side }
+    document.body.style.overflow = 'hidden'
+    if (scrollbarWidth > 0) document.body.style[side] = `${scrollbarWidth}px`
+  }
+  scrollLockCount += 1
+}
+
+const unlockPageScroll = () => {
+  scrollLockCount = Math.max(0, scrollLockCount - 1)
+  if (scrollLockCount === 0 && previousBodyStyle) {
+    document.body.style.overflow = previousBodyStyle.overflow
+    document.body.style[previousBodyStyle.side] = previousBodyStyle[previousBodyStyle.side]
+    previousBodyStyle = null
+  }
+}
+
 export const Dialog = ({ open, onClose, children, maxWidth, ...props }) => {
+  const titleId = useId()
+
   useEffect(() => {
     if (!open) return undefined
     const handleKeyDown = (event) => {
       if (event.key === 'Escape') onClose?.()
     }
     window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
+    lockPageScroll()
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+      unlockPageScroll()
+    }
   }, [open, onClose])
 
   if (!open) return null
   return createPortal(<div className="dialog-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose?.() }}>
-    <section role="dialog" aria-modal="true" style={{ width: maxWidth === 'xs' ? 'min(32rem, 95vw)' : 'min(48rem, 95vw)' }} {...cleanProps(props, ['fullWidth'])}>{children}</section>
+    <section role="dialog" aria-modal="true" aria-labelledby={titleId} style={{ width: maxWidth === 'xs' ? 'min(32rem, 100%)' : 'min(48rem, 100%)' }} {...cleanProps(props, ['fullWidth'])}>
+      <DialogContext.Provider value={{ onClose, titleId }}>{children}</DialogContext.Provider>
+    </section>
   </div>, document.body)
 }
-export const DialogTitle = ({ children }) => <h2>{children}</h2>
+export const DialogTitle = ({ children }) => {
+  const dialog = useContext(DialogContext)
+  return <h2 id={dialog?.titleId}>
+    <span className="dialog-title-text">{children}</span>
+    {dialog?.onClose && <button type="button" className="dialog-close-button" aria-label="סגירה" onClick={() => dialog.onClose()}>
+      <svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
+    </button>}
+  </h2>
+}
 export const DialogContent = ({ children, sx, ...props }) => <div className={`p-dialog-content ${responsiveClass(sx) ? 'p-responsive-layout' : ''}`} style={layoutStyle(sx)} {...cleanProps(props)}>{children}</div>
 export const DialogActions = ({ children, ...props }) => <div className="p-dialog-footer" {...cleanProps(props)}>{children}</div>
 
