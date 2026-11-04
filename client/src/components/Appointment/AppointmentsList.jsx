@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 import { useSearchParams } from "react-router-dom"
 import { HebrewCalendar } from '@hebcal/core'
 
-import { Add, ChevronLeft, ChevronRight, Clear, Delete, Edit, ExpandLess, ExpandMore, Search, Alert, Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, InputAdornment, MenuItem, Paper, Stack, Tab, Tabs, TextField, Typography } from "../Shared/PrimeUI"
+import { Add, ChevronLeft, ChevronRight, Clear, Delete, Edit, Search, Alert, Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, InputAdornment, MenuItem, Paper, Stack, Tab, Tabs, TextField, Typography } from "../Shared/PrimeUI"
 import { createAppointment, deleteAppointment, getAppointments, getCustomers, updateAppointment, updateSystemSettings } from "../../api"
 import { formatDateTime } from '../../dateFormat'
 import QuickCreateCustomer, { QuickCreateCustomerOption } from '../Customer/QuickCreateCustomer'
@@ -292,7 +292,7 @@ const AppointmentsList = ({ picklists, user, onUserUpdate }) => {
     const lastMinute = calendarView === 'day' || calendarView === 'week' ? dayEndHour * 60 : 24 * 60
     const slots = Array.from({ length: (lastMinute - firstMinute) / step }, (_, index) => firstMinute + index * step)
     const gridHeight = (lastMinute - firstMinute) * unit
-    return <Box className="calendar-time-grid" sx={{ display: 'grid', gridTemplateColumns: `64px repeat(${days.length}, minmax(${isDay ? 180 : 120}px, 1fr))`, minWidth: isDay ? 244 : 900, overflow: 'auto' }}>
+    return <Box className="calendar-time-grid" sx={{ display: 'grid', gridTemplateColumns: `64px repeat(${days.length}, minmax(${isDay ? 180 : 120}px, 1fr))`, minWidth: isDay ? 244 : 900 }}>
       <Box />
       {days.map((date) => <Box key={dateKey(date)} className={`calendar-day-header${sameDay(date, new Date()) ? ' calendar-current-day' : ''}`} style={{ border: '1px solid #cbd5da', borderBottom: 0, backgroundColor: '#ffffff' }} sx={{ boxSizing: 'border-box', p: 1, textAlign: 'center', fontWeight: 'bold' }}>{isDay ? dayNames[date.getDay()] : `${dayNames[date.getDay()]} ${calendarType === 'hebrew' ? formatHebrewDay(date) : `${date.getDate()}/${date.getMonth() + 1}`}`}</Box>)}
       <Box className="calendar-hour-labels" sx={{ position: 'relative' }}>{slots.map((minutes) => <Box key={minutes} style={{ borderBottom: '1px solid #e1e7ea' }} sx={{ height: 60 * unit, color: 'text.secondary', fontSize: 12, pt: 0.5 }}>{`${pad(Math.floor(minutes / 60))}:${pad(minutes % 60)}`}</Box>)}</Box>
@@ -304,14 +304,14 @@ const AppointmentsList = ({ picklists, user, onUserUpdate }) => {
   }
 
   const renderMonth = () => <Box className="calendar-month-grid" style={{ borderTop: '1px solid #dce4e8', borderInlineStart: '1px solid #dce4e8' }} sx={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', minWidth: 770 }}>
-    {dayNames.map((name) => <Box key={name} style={{ borderInlineEnd: '1px solid #dce4e8', borderBottom: '1px solid #dce4e8' }} sx={{ boxSizing: 'border-box', minHeight: 42, p: 1, textAlign: 'center', fontWeight: 'bold', color: 'text.primary' }}>{name}</Box>)}
+    {dayNames.map((name) => <Box key={name} className="calendar-weekday-header" style={{ borderInlineEnd: '1px solid #dce4e8', borderBottom: '1px solid #dce4e8' }} sx={{ boxSizing: 'border-box', minHeight: 42, p: 1, textAlign: 'center', fontWeight: 'bold', color: 'text.primary' }}>{name}</Box>)}
     {calendarDays.map((date, index) => {
       const isToday = date && sameDay(date, new Date())
-      return <Box key={date ? dateKey(date) : `empty-${index}`} className={isToday ? 'calendar-month-today' : date ? 'calendar-month-day' : 'calendar-month-empty'} onClick={() => date && openNewAt(date)} style={{ borderInlineEnd: '1px solid #dce4e8', borderBottom: '1px solid #dce4e8', backgroundColor: isToday ? '#e7f4f1' : date ? '#ffffff' : '#f4f7f8' }} sx={{ boxSizing: 'border-box', minHeight: 140, p: 1, display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 0.5, cursor: date ? 'pointer' : 'default', overflow: 'hidden' }}>
+      return <Box key={date ? dateKey(date) : `empty-${index}`} className={isToday ? 'calendar-month-today' : date ? 'calendar-month-day' : 'calendar-month-empty'} onClick={() => date && openNewAt(date)} style={{ borderInlineEnd: '1px solid #dce4e8', borderBottom: '1px solid #dce4e8', backgroundColor: isToday ? '#e7f4f1' : date ? '#ffffff' : '#f4f7f8' }} sx={{ boxSizing: 'border-box', minHeight: 140, p: 1, display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 0.5, cursor: date ? 'pointer' : 'default' }}>
         {date && <>
-          <Typography variant="subtitle2" fontWeight="bold" sx={{ textAlign: 'right', flex: '0 0 auto' }}>{calendarType === 'hebrew' ? formatHebrewDay(date) : date.getDate()}</Typography>
+          <Typography className="calendar-date-number" variant="subtitle2" fontWeight="bold" sx={{ textAlign: 'right', flex: '0 0 auto' }}>{calendarType === 'hebrew' ? formatHebrewDay(date) : date.getDate()}</Typography>
           {calendarType === 'hebrew' && holidaysForDate(date).map((holiday) => <Typography key={holiday} variant="caption" fontWeight="bold" color="primary.main" noWrap>{holiday}</Typography>)}
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, overflowY: 'auto' }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
             {visibleForDay(date).map((item) => <Paper key={item.id} className="calendar-event" onClick={(event) => { event.stopPropagation(); setDetailsAppointment(item) }} sx={{ px: 0.75, py: 0.25, bgcolor: item.status === 'CANCELLED' ? 'grey.300' : 'primary.light', color: 'primary.contrastText', overflow: 'hidden' }}><Typography variant="caption" noWrap>{item.title}</Typography></Paper>)}
           </Box>
         </>}
@@ -330,7 +330,7 @@ const AppointmentsList = ({ picklists, user, onUserUpdate }) => {
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
       <Paper sx={{ p: 2, mb: 3 }}>
         <Typography variant="h6" sx={{ mb: 1.5 }}>חיפוש וסינון פגישות</Typography>
-        <Stack className="list-search-controls" direction="row" sx={{ width: '100%', direction: 'rtl' }}>
+        <Stack className="list-search-controls" direction="row" spacing={2} sx={{ width: '100%', direction: 'rtl' }}>
           <TextField
             fullWidth
             label="חיפוש בכל השדות"
@@ -340,25 +340,26 @@ const AppointmentsList = ({ picklists, user, onUserUpdate }) => {
             InputProps={{ startAdornment: <InputAdornment position="start"><Search color="action" /></InputAdornment> }}
             sx={{ width: '100%' }}
           />
-          <Button className="advanced-search-button" variant="outlined" startIcon={isAdvancedSearchOpen ? <ExpandLess /> : <ExpandMore />} onClick={() => setIsAdvancedSearchOpen((openState) => !openState)}>{isAdvancedSearchOpen ? 'סגירת חיפוש מתקדם' : 'חיפוש מתקדם'}</Button>
+          <Button className="advanced-search-button" variant="outlined" onClick={() => setIsAdvancedSearchOpen((openState) => !openState)}>{isAdvancedSearchOpen ? 'סגירת חיפוש מתקדם' : 'חיפוש מתקדם'}</Button>
           <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'nowrap', flex: '0 0 auto' }}>{filteredAppointments.length} פגישות</Typography>
         </Stack>
         {isAdvancedSearchOpen && <>
-          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)', xl: 'repeat(4, 1fr)' }, gap: 1, mt: 1.5 }}>
+          <Box className="advanced-search-panel"><Box className="advanced-search-grid">
             <TextField select label="לקוח" value={filters.customerId} onChange={(event) => updateFilter('customerId', event.target.value)}><MenuItem value="">כל הלקוחות</MenuItem>{customers.map((item) => <MenuItem key={item.id} value={item.id}>{item.fullName}</MenuItem>)}</TextField>
             <TextField select label="סטטוס" value={filters.status} onChange={(event) => updateFilter('status', event.target.value)}><MenuItem value="">כל הסטטוסים</MenuItem>{appointmentStatuses.map((option) => <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>)}</TextField>
             <TextField label="מתאריך" type="date" value={filters.fromDate} onChange={(event) => updateFilter('fromDate', event.target.value)} InputLabelProps={{ shrink: true }} />
             <TextField label="עד תאריך" type="date" value={filters.toDate} onChange={(event) => updateFilter('toDate', event.target.value)} InputLabelProps={{ shrink: true }} />
             <TextField select label="משעה" value={filters.fromHour} onChange={(event) => updateFilter('fromHour', event.target.value)}><MenuItem value="">כל השעות</MenuItem>{Array.from({ length: 24 }, (_, hour) => <MenuItem key={hour} value={hour}>{`${pad(hour)}:00`}</MenuItem>)}</TextField>
             <TextField select label="עד שעה" value={filters.toHour} onChange={(event) => updateFilter('toHour', event.target.value)}><MenuItem value="">כל השעות</MenuItem>{Array.from({ length: 24 }, (_, hour) => <MenuItem key={hour} value={hour}>{`${pad(hour)}:00`}</MenuItem>)}</TextField>
-            <Button startIcon={<Clear />} onClick={clearFilters} disabled={!Object.values(filters).some(Boolean)}>ניקוי מסננים</Button>
+          </Box>
+          <Box className="advanced-search-actions"><Button startIcon={<Clear />} onClick={clearFilters} disabled={!Object.values(filters).some(Boolean)}>ניקוי מסננים</Button></Box>
           </Box>
         </>}
       </Paper>
-      <Paper sx={{ p: 2, mb: 3, overflow: 'auto' }}>
+      <Paper sx={{ p: 2, mb: 3 }}>
         <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2, minWidth: 500 }}>
           <Stack direction="row" alignItems="center"><IconButton onClick={() => moveCalendar(-1)} aria-label="הקודם"><ChevronLeft /></IconButton><IconButton onClick={() => moveCalendar(1)} aria-label="הבא"><ChevronRight /></IconButton><Button onClick={() => setCalendarDate(new Date())}>היום</Button></Stack>
-          <Typography fontWeight="bold">{calendarTitle}</Typography>
+          <Typography className="calendar-title" fontWeight="bold">{calendarTitle}</Typography>
         </Stack>
         <Tabs value={calendarView} onChange={(_, value) => saveCalendarView(value)} sx={{ mb: 2 }}><Tab value="day" label="יום" /><Tab value="week" label="שבוע" /><Tab value="month" label="חודש" /></Tabs>
         <Stack direction="row" spacing={1} sx={{ mb: 2 }}>

@@ -1,18 +1,18 @@
-import { Outlet } from "react-router-dom"
+import { Outlet, useLocation } from "react-router-dom"
 
 import { Box, Container } from "./PrimeUI"
 import Header from "./Header"
 
 const Layout = ({ user, onLogout }) => {
+  const { pathname } = useLocation()
+
   return (
     <Box
       className="page"
       sx={{
         display: 'flex',
         flexDirection: 'column',
-        height: '100vh',
-        height: '100dvh',
-        overflow: 'hidden'
+        minHeight: '100dvh'
       }}
     >
       <Header user={user} onLogout={onLogout} />
@@ -22,13 +22,14 @@ const Layout = ({ user, onLogout }) => {
         sx={{
           flex: '1 1 0',
           minHeight: 0,
-          overflow: 'hidden',
           py: 4,
           display: 'flex',
           flexDirection: 'column'
         }}
       >
-        <Outlet />
+        <div key={pathname} className="page-transition">
+          <Outlet />
+        </div>
       </Container>
     </Box>
   )

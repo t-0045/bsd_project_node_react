@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { Alert, Box, Button, Card, CardContent, Container, Tab, Tabs, TextField, Typography } from "../Shared/PrimeUI"
+import { Alert, Box, Button, Card, CardContent, Tab, Tabs, TextField, Typography } from "../Shared/PrimeUI"
 import { loginUser, registerUser } from "../../api"
 
 const Login = ({ onLogin }) => {
-  console.log("API BASE URL:", import.meta.env.VITE_API_URL)
   const [isRegister, setIsRegister] = useState(false)
   const [form, setForm] = useState({
     email: "",
@@ -61,13 +60,13 @@ const Login = ({ onLogin }) => {
   }
 
   return (
-    <Container className="auth-page" style={{ width: "100%", maxWidth: "none", marginInline: 0, boxSizing: "border-box" }} sx={{ minHeight: "100vh", display: "grid" }}>
-      <Card className="auth-card" elevation={1} sx={{ width: "100%" }}>
+    <main className="auth-page">
+      <Card className="auth-card" elevation={1}>
         <CardContent>
-          <Typography variant="h4" component="h1" gutterBottom fontWeight="bold" color="primary">
-            מנהל העסק
+          <Typography variant="h4" component="h1" className="auth-title">
+             mannager app
           </Typography>
-          <Typography color="text.secondary" sx={{ mb: 3 }}>ניהול העסק שלך</Typography>
+          <Typography className="auth-subtitle">ניהול העסק שלך</Typography>
 
           <Tabs
             value={isRegister ? 1 : 0}
@@ -75,15 +74,14 @@ const Login = ({ onLogin }) => {
               setIsRegister(value === 1)
               setError("")
             }}
-            sx={{ mb: 3 }}
           >
             <Tab label="התחברות" />
             <Tab label="הרשמה" />
           </Tabs>
 
-          {error && <Alert severity={error.includes("החשבון נוצר") ? "success" : "error"} sx={{ mb: 2 }}>{error}</Alert>}
+          {error && <Alert severity="error">{error}</Alert>}
 
-          <Box component="form" onSubmit={handleSubmit} sx={{ display: "grid", gap: 2 }}>
+          <Box component="form" className="auth-form" onSubmit={handleSubmit}>
             {isRegister && (
               <TextField
                 name="businessName"
@@ -112,7 +110,7 @@ const Login = ({ onLogin }) => {
           </Box>
         </CardContent>
       </Card>
-    </Container>
+    </main>
   )
 }
 

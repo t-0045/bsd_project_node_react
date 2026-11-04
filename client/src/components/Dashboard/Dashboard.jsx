@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 
-import { AccessTime, Event, Pause, People, Stop, TaskAlt, Alert, Box, Button, Card, CardContent, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, Grid, Paper, Stack, Typography } from "../Shared/PrimeUI"
+import { AccessTime, Event, Pause, People, Stop, TaskAlt, Alert, Box, Button, Card, CardContent, CircularProgress, Clear, Dialog, DialogActions, DialogContent, DialogTitle, Grid, IconButton, Paper, Stack, Typography } from "../Shared/PrimeUI"
 import { changeSubtaskTimerStatus, getAppointments, getCustomers, getTasks, updateAppointment } from "../../api"
 import { formatDate, formatDateTime } from '../../dateFormat'
 import taskStatusColorValues from '../../taskStatusColors'
@@ -10,14 +10,15 @@ const Dashboard = ({ user, picklists }) => {
   const includeSubtaskTimers = user?.includeSubtaskTimers !== false
   const taskStatuses = picklists?.taskStatus || []
   const taskPriorities = picklists?.taskPriority || []
+  const appointmentStatuses = picklists?.appointmentStatus || []
   const [data, setData] = useState({ customers: [], tasks: [], appointments: [] })
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
   const [appointmentView, setAppointmentView] = useState('today')
-  const [showOverdueAppointments, setShowOverdueAppointments] = useState(false)
   const [appointmentNow, setAppointmentNow] = useState(Date.now())
   const [timerNow, setTimerNow] = useState(0)
   const [selectedTask, setSelectedTask] = useState(null)
+  const [selectedAppointment, setSelectedAppointment] = useState(null)
   const [updatingAppointmentId, setUpdatingAppointmentId] = useState(null)
 
   const loadDashboard = async () => {
@@ -38,7 +39,7 @@ const Dashboard = ({ user, picklists }) => {
   }, [])
 
   useEffect(() => {
-    if (appointmentView !== 'today') return undefined
+    if (appointmentView !== 'today' && appointmentView !== 'overdue') return undefined
     const intervalId = window.setInterval(() => setAppointmentNow(Date.now()), 30000)
     return () => window.clearInterval(intervalId)
   }, [appointmentView])
@@ -147,7 +148,7 @@ const Dashboard = ({ user, picklists }) => {
         {cards.map((card) => (
           <Grid item xs={12} sm={6} md={3} key={card.label}>
             <Card className="dashboard-summary-card" elevation={1}>
-              <CardContent sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: 88 }}>
+              <CardContent sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
                   <Typography color="text.secondary">{card.label}</Typography>
                   <Typography variant="h3" sx={{ fontWeight: 700 }}>{card.value}</Typography>
@@ -159,26 +160,28 @@ const Dashboard = ({ user, picklists }) => {
         ))}
         {includeSubtaskTimers && <Grid item xs={12} sm={6} md={3}>
           <Card className="dashboard-summary-card dashboard-active-timer" elevation={1}>
-            <CardContent sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: 120, boxSizing: 'border-box', p: 1.5, '&:last-child': { pb: 1.5 } }}>
-              <Box display="flex" justifyContent="space-between" alignItems="center">
+            <CardContent sx={{ display: 'flex', flexDirection: 'column' }}>
+              <Box className="dashboard-active-timer-header" display="flex" justifyContent="space-between" alignItems="flex-start">
                 <Typography color="text.secondary">הטיימר הפעיל</Typography>
                 <Box display="flex" alignItems="center" gap={0.75}>
                   {activeTimer && <Typography className="dashboard-active-timer-duration" aria-live="off">{formatTimerDuration(activeTimerDuration)}</Typography>}
-                  <AccessTime />
+                  <AccessTime fontSize="large" />
                 </Box>
               </Box>
+              <Box className="dashboard-active-timer-body">
               {activeTimer ? (
-                <Box className="dashboard-active-timer-details" sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 0.75, minWidth: 0 }}>
+                <Box className="dashboard-active-timer-details" sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 0.75, minWidth: 0, width: '100%' }}>
                   <Box sx={{ minWidth: 0, flex: 1 }}>
                     <Typography fontWeight="bold" noWrap>{activeTimer.title || 'תת־משימה'}</Typography>
                     <Typography variant="body2" color="text.secondary" noWrap>משימה: {activeTimer.taskTitle || 'ללא כותרת'}</Typography>
                   </Box>
-                  <Stack className="dashboard-active-timer-controls" direction="row" spacing={0.5} sx={{ flexShrink: 1, minWidth: 0 }}>
+                  <Stack className="dashboard-active-timer-controls" direction="row" spacing={0.5} sx={{ flexShrink: 0 }}>
                     <Button size="small" variant="outlined" color="warning" startIcon={<Pause />} onClick={() => handleTimerStatus('pause')}>השהיה</Button>
                     <Button size="small" variant="contained" color="error" startIcon={<Stop />} onClick={() => handleTimerStatus('complete')}>סיום</Button>
                   </Stack>
                 </Box>
               ) : <Typography color="text.secondary">אין טיימר פעיל</Typography>}
+              </Box>
             </CardContent>
           </Card>
         </Grid>}
@@ -210,7 +213,7 @@ const Dashboard = ({ user, picklists }) => {
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mb: 2 }}>
               <Typography variant="h6" fontWeight="bold">פגישות קרובות</Typography>
               <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
-                <Button size="small" variant={showOverdueAppointments ? 'contained' : 'outlined'} onClick={() => setShowOverdueAppointments((current) => !current)}>פגישות שעבר מועדן ({overdueAppointments.length})</Button>
+                <Button size="small" variant={appointmentView === 'overdue' ? 'contained' : 'outlined'} onClick={() => setAppointmentView('overdue')}>פגישות שעבר מועדן ({overdueAppointments.length})</Button>
                 <Button size="small" variant={appointmentView === 'today' ? 'contained' : 'outlined'} onClick={() => setAppointmentView('today')}>היום</Button>
                 <Button size="small" variant={appointmentView === 'tomorrow' ? 'contained' : 'outlined'} onClick={() => setAppointmentView('tomorrow')}>מחר</Button>
                 <Button size="small" variant={appointmentView === 'week' ? 'contained' : 'outlined'} onClick={() => setAppointmentView('week')}>השבוע הקרוב</Button>
@@ -218,25 +221,31 @@ const Dashboard = ({ user, picklists }) => {
               </Box>
             </Box>
             <Stack className="dashboard-appointment-list" role="region" aria-label="רשימת פגישות קרובות" tabIndex={0} spacing={1.25} sx={{ flex: '1 1 0%', minHeight: 0, boxSizing: 'border-box', overflowY: 'auto', pr: 0.5 }}>
-              {(showOverdueAppointments ? overdueAppointments : visibleAppointments).length ? (showOverdueAppointments ? overdueAppointments : visibleAppointments).map((item) => (
-                <Paper key={item.id} variant="outlined" sx={{ p: 1.5, borderRadius: 1, flex: '0 0 auto' }}>
+              {(appointmentView === 'overdue' ? overdueAppointments : visibleAppointments).length ? (appointmentView === 'overdue' ? overdueAppointments : visibleAppointments).map((item) => (
+                <Paper key={item.id} className="dashboard-appointment-tile" role="button" tabIndex={0} aria-label={`פתיחת פרטי הפגישה ${item.title || 'ללא כותרת'}`} onClick={() => setSelectedAppointment(item)} onKeyDown={(event) => {
+                  if (event.target !== event.currentTarget) return
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault()
+                    setSelectedAppointment(item)
+                  }
+                }} variant="outlined" sx={{ p: 1.5, borderRadius: 1, flex: '0 0 auto', cursor: 'pointer' }}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
-                    <Typography component={Link} to={`/appointments?appointmentId=${item.id}`} fontWeight="bold" color="primary" sx={{ textDecoration: 'none' }}>{item.title}</Typography>
-                    {(showOverdueAppointments || (appointmentView === 'today' && new Date(item.endTime).getTime() <= appointmentNow)) && <Box sx={{ display: 'flex', gap: 0.75 }}>
-                      <Button size="small" variant="outlined" disabled={updatingAppointmentId === item.id} onClick={() => handleUpdateAppointmentStatus(item, 'COMPLETED')}>הושלמה</Button>
-                      <Button size="small" variant="outlined" color="error" disabled={updatingAppointmentId === item.id} onClick={() => handleUpdateAppointmentStatus(item, 'CANCELLED')}>נדחתה</Button>
+                    <Typography fontWeight="bold" color="primary">{item.title || 'ללא כותרת'}</Typography>
+                    {(appointmentView === 'overdue' || (appointmentView === 'today' && new Date(item.endTime).getTime() <= appointmentNow)) && <Box sx={{ display: 'flex', gap: 0.75 }}>
+                      <Button size="small" variant="outlined" disabled={updatingAppointmentId === item.id} onClick={(event) => { event.stopPropagation(); handleUpdateAppointmentStatus(item, 'COMPLETED') }}>הושלמה</Button>
+                      <Button size="small" variant="outlined" color="error" disabled={updatingAppointmentId === item.id} onClick={(event) => { event.stopPropagation(); handleUpdateAppointmentStatus(item, 'CANCELLED') }}>נדחתה</Button>
                     </Box>}
                   </Box>
                   <Typography variant="body2" color="text.secondary">{formatDateTime(item.startTime)}</Typography>
                 </Paper>
-              )) : <Typography color="text.secondary">{showOverdueAppointments ? 'אין פגישות פתוחות שעבר מועדן' : `אין פגישות ${appointmentView === 'today' ? 'להיום' : appointmentView === 'tomorrow' ? 'למחר' : 'בשבוע הקרוב'}`}</Typography>}
+              )) : <Typography color="text.secondary">{appointmentView === 'overdue' ? 'אין פגישות פתוחות שעבר מועדן' : `אין פגישות ${appointmentView === 'today' ? 'להיום' : appointmentView === 'tomorrow' ? 'למחר' : 'בשבוע הקרוב'}`}</Typography>}
             </Stack>
           </Paper>
         </Grid>
       </Grid>}
       <Dialog className="record-details-dialog" open={Boolean(selectedTask)} onClose={() => setSelectedTask(null)} fullWidth maxWidth="sm">
         {selectedTask && <>
-          <DialogTitle>{selectedTask.title || 'ללא כותרת'}</DialogTitle>
+          <DialogTitle><span>{selectedTask.title || 'ללא כותרת'}</span><IconButton className="dialog-close-button" aria-label="סגירה" onClick={() => setSelectedTask(null)}><Clear /></IconButton></DialogTitle>
           <DialogContent className="record-details-content">
             <Box className="record-details-grid">
               <Box className="record-detail-field"><Typography variant="caption">לקוח</Typography><Typography>{customerName(selectedTask.customerId)}</Typography></Box>
@@ -257,7 +266,24 @@ const Dashboard = ({ user, picklists }) => {
             ))}
           </DialogContent>
           <DialogActions className="record-details-actions">
-            <Button onClick={() => setSelectedTask(null)}>סגירה</Button>
+            <Button component={Link} to={`/tasks?taskId=${selectedTask.id}`} variant="contained">מעבר לעמוד המשימות</Button>
+          </DialogActions>
+        </>}
+      </Dialog>
+      <Dialog className="record-details-dialog" open={Boolean(selectedAppointment)} onClose={() => setSelectedAppointment(null)} fullWidth maxWidth="sm">
+        {selectedAppointment && <>
+          <DialogTitle><span>{selectedAppointment.title || 'ללא כותרת'}</span><IconButton className="dialog-close-button" aria-label="סגירה" onClick={() => setSelectedAppointment(null)}><Clear /></IconButton></DialogTitle>
+          <DialogContent className="record-details-content">
+            <Box className="record-details-grid">
+              <Box className="record-detail-field"><Typography variant="caption">לקוח</Typography><Typography>{selectedAppointment.customerId ? customerName(selectedAppointment.customerId) : 'ללא לקוח'}</Typography></Box>
+              <Box className="record-detail-field"><Typography variant="caption">סטטוס</Typography><Typography>{appointmentStatuses.find((option) => option.value === selectedAppointment.status)?.label || selectedAppointment.status}</Typography></Box>
+              <Box className="record-detail-field"><Typography variant="caption">התחלה</Typography><Typography>{formatDateTime(selectedAppointment.startTime)}</Typography></Box>
+              <Box className="record-detail-field"><Typography variant="caption">סיום</Typography><Typography>{formatDateTime(selectedAppointment.endTime)}</Typography></Box>
+              <Box className="record-detail-field record-detail-notes"><Typography variant="caption">מיקום</Typography><Typography>{selectedAppointment.location || 'לא צוין'}</Typography></Box>
+            </Box>
+          </DialogContent>
+          <DialogActions className="record-details-actions">
+            <Button component={Link} to={`/appointments?appointmentId=${selectedAppointment.id}`} variant="contained">מעבר לעמוד הפגישות</Button>
           </DialogActions>
         </>}
       </Dialog>

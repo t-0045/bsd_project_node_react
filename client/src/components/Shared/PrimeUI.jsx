@@ -1,4 +1,5 @@
 import { Children, cloneElement, createContext, isValidElement, useContext, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 
 /* eslint-disable react-refresh/only-export-components */
 
@@ -129,9 +130,9 @@ export const Dialog = ({ open, onClose, children, maxWidth, ...props }) => {
   }, [open, onClose])
 
   if (!open) return null
-  return <div className="dialog-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose?.() }}>
+  return createPortal(<div className="dialog-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose?.() }}>
     <section role="dialog" aria-modal="true" style={{ width: maxWidth === 'xs' ? 'min(32rem, 95vw)' : 'min(48rem, 95vw)' }} {...cleanProps(props, ['fullWidth'])}>{children}</section>
-  </div>
+  </div>, document.body)
 }
 export const DialogTitle = ({ children }) => <h2>{children}</h2>
 export const DialogContent = ({ children, sx, ...props }) => <div className={`p-dialog-content ${responsiveClass(sx) ? 'p-responsive-layout' : ''}`} style={layoutStyle(sx)} {...cleanProps(props)}>{children}</div>
@@ -157,7 +158,7 @@ export const Accordion = ({ children, sx, className = '', style, ...props }) => 
 }
 export const AccordionSummary = () => null
 export const AccordionDetails = ({ children, sx, className = '', ...props }) => <div className={`p-accordion-details ${responsiveClass(sx) ? 'p-responsive-layout' : ''} ${className}`} style={layoutStyle(sx)} {...cleanProps(props)}>{children}</div>
-export const Avatar = ({ src, alt, children }) => src ? <img className="p-avatar" src={src} alt={alt || ''} /> : <span className="p-avatar" role="img" aria-label={alt || 'תמונת פרופיל'}>{children || alt?.slice(0, 1) || '?'}</span>
+export const Avatar = ({ src, alt, children, className = '' }) => src ? <img className={`p-avatar ${className}`} src={src} alt={alt || ''} /> : <span className={`p-avatar ${className}`} role="img" aria-label={alt || 'תמונת פרופיל'}>{children || alt?.slice(0, 1) || '?'}</span>
 
 export const Checkbox = ({ checked, onChange, ...props }) => <input type="checkbox" checked={checked} onChange={(event) => onChange?.({ target: { checked: event.target.checked } })} {...cleanProps(props, ['size'])} />
 export const Switch = (props) => <Checkbox {...props} />

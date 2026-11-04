@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useBlocker } from 'react-router-dom'
-import { AccountCircle, Add, CloudUpload, DeleteOutline, ExpandMore, Save, Accordion, AccordionDetails, AccordionSummary, Alert, Avatar, Box, Button, Checkbox, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, FormControlLabel, FormGroup, FormLabel, MenuItem, Radio, RadioGroup, Stack, Switch, TextField, Typography } from './PrimeUI'
+import { Add, CloudUpload, DeleteOutline, ExpandMore, Save, Accordion, AccordionDetails, AccordionSummary, Alert, Avatar, Box, Button, Checkbox, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, FormControlLabel, FormGroup, FormLabel, MenuItem, Radio, RadioGroup, Stack, Switch, TextField, Typography } from './PrimeUI'
 import { updatePersonalDetails, updatePicklists, updateProfileImage, updateSystemSettings } from '../../api'
+import defaultAvatar from '../../assets/default-avatar.svg'
 
 const MAX_IMAGE_SIZE = 2 * 1024 * 1024
 const ALLOWED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp']
@@ -79,7 +80,18 @@ const SettingsPage = ({ user, onUserUpdate, picklists, onPicklistsUpdate }) => {
         updateSystemSettings({ includeSubtaskTimers, duplicateCustomerFields, duplicateCustomerMode, requiredFields, calendarStartHour, calendarEndHour }),
         updatePicklists(editablePicklists),
       ])
-      const savedUser = { ...updatedUser, ...updatedSystemSettings, profileImage: updatedProfile?.profileImage || '' }
+      // כל תשובה מהשרת היא אובייקט משתמש מלא; ממזגים כל שדה מהתשובה שאחראית עליו,
+      // כדי שתשובה ישנה מבקשה אחרת לא תדרוס את הערך שנשמר (למשל תוקף הטוקן).
+      const savedUser = {
+        ...updatedUser,
+        includeSubtaskTimers: updatedSystemSettings?.includeSubtaskTimers,
+        duplicateCustomerFields: updatedSystemSettings?.duplicateCustomerFields,
+        duplicateCustomerMode: updatedSystemSettings?.duplicateCustomerMode,
+        requiredFields: updatedSystemSettings?.requiredFields,
+        calendarStartHour: updatedSystemSettings?.calendarStartHour,
+        calendarEndHour: updatedSystemSettings?.calendarEndHour,
+        profileImage: updatedProfile?.profileImage || '',
+      }
       onUserUpdate(savedUser)
       setBusinessName(savedUser?.businessName || '')
       setBackupEmails(savedUser?.backupEmails || [])
@@ -229,9 +241,19 @@ const SettingsPage = ({ user, onUserUpdate, picklists, onPicklistsUpdate }) => {
           </Button>
         </DialogActions>
       </Dialog>
-      <Typography variant="h4" component="h1" fontWeight="bold" color="primary" sx={{ mb: 1 }}>
-        הגדרות משתמש
-      </Typography>
+      <Box className="settings-page-header">
+        <Typography variant="h4" component="h1">
+          הגדרות משתמש
+        </Typography>
+        <Button className="settings-save-button" variant="contained" startIcon={isSaving ? <CircularProgress size={18} color="inherit" /> : <Save />} onClick={handleSave} disabled={isSaving}>
+          שמירת כל השינויים
+        </Button>
+      </Box>
+
+      <Box className="settings-save-status" aria-live="polite">
+        {error && <Alert severity="error">{error}</Alert>}
+        {success && <Alert severity="success">{success}</Alert>}
+      </Box>
 
       <Accordion disableGutters elevation={1}>
         <AccordionSummary expandIcon={<ExpandMore />} aria-controls="personal-details-content" id="personal-details-header">
@@ -239,36 +261,33 @@ const SettingsPage = ({ user, onUserUpdate, picklists, onPicklistsUpdate }) => {
         </AccordionSummary>
         <AccordionDetails sx={{ p: { xs: 2, sm: 3 } }}>
           <Box className="settings-personal-content">
-            <Stack spacing={2}>
-              <Box className="settings-account-grid">
-                <TextField label="אימייל ראשי" type="email" value={user?.email || ''} disabled fullWidth />
-                <TextField
-                  label="שם העסק"
-                  value={businessName}
-                  onChange={(event) => setBusinessName(event.target.value)}
-                  required
-                  fullWidth
-                />
-                <TextField
-                  select
-                  label="תוקף טוקן הגישה אחרי התחברות"
-                  value={accessTokenDurationMinutes}
-                  onChange={(event) => setAccessTokenDurationMinutes(Number(event.target.value))}
-                  helperText="אחרי שהתוקף מסתיים, האפליקציה תבקש טוקן גישה חדש אוטומטית כל עוד ההתחברות בתוקף."
-                  fullWidth
-                >
-                  <MenuItem value={5}>5 דקות</MenuItem>
-                  <MenuItem value={15}>15 דקות</MenuItem>
-                  <MenuItem value={30}>30 דקות</MenuItem>
-                  <MenuItem value={60}>שעה אחת</MenuItem>
-                  <MenuItem value={120}>שעתיים</MenuItem>
-                </TextField>
-              </Box>
-              <Box className="settings-contact-grid">
-                <Box className="settings-contact-group">
-                  <Typography fontWeight="medium">כתובות אימייל לגיבוי</Typography>
+            <TextField label="אימייל ראשי" type="email" value={user?.email || ''} disabled fullWidth />
+            <TextField
+              label="שם העסק"
+              value={businessName}
+              onChange={(event) => setBusinessName(event.target.value)}
+              required
+              fullWidth
+            />
+            <TextField
+              select
+              label="תוקף טוקן הגישה אחרי התחברות"
+              value={accessTokenDurationMinutes}
+              onChange={(event) => setAccessTokenDurationMinutes(Number(event.target.value))}
+              helperText="אחרי שהתוקף מסתיים, האפליקציה תבקש טוקן גישה חדש אוטומטית כל עוד ההתחברות בתוקף."
+              fullWidth
+            >
+              <MenuItem value={5}>5 דקות</MenuItem>
+              <MenuItem value={15}>15 דקות</MenuItem>
+              <MenuItem value={30}>30 דקות</MenuItem>
+              <MenuItem value={60}>שעה אחת</MenuItem>
+              <MenuItem value={120}>שעתיים</MenuItem>
+            </TextField>
+
+            <Box className="settings-contact-group">
+              <Typography fontWeight="medium">כתובות אימייל לגיבוי</Typography>
               {backupEmails.map((email, index) => (
-                <Stack key={`backup-email-${index}`} direction="row" spacing={1} alignItems="center">
+                <Stack key={`backup-email-${index}`} direction="row" spacing={1} alignItems="flex-end">
                   <TextField
                     label={`אימייל לגיבוי ${index + 1}`}
                     type="email"
@@ -293,11 +312,12 @@ const SettingsPage = ({ user, onUserUpdate, picklists, onPicklistsUpdate }) => {
               >
                 הוספת כתובת גיבוי
               </Button>
-                </Box>
-                <Box className="settings-contact-group">
-                  <Typography fontWeight="medium">מספרי טלפון</Typography>
+            </Box>
+
+            <Box className="settings-contact-group">
+              <Typography fontWeight="medium">מספרי טלפון</Typography>
               {phoneNumbers.map((number, index) => (
-                <Stack key={`phone-number-${index}`} direction="row" spacing={1} alignItems="center">
+                <Stack key={`phone-number-${index}`} direction="row" spacing={1} alignItems="flex-end">
                   <TextField
                     label={`מספר טלפון ${index + 1}`}
                     type="tel"
@@ -323,29 +343,21 @@ const SettingsPage = ({ user, onUserUpdate, picklists, onPicklistsUpdate }) => {
               >
                 הוספת מספר טלפון
               </Button>
-                </Box>
-              </Box>
-            </Stack>
-          <Box className="settings-profile-password-grid">
-          <Accordion disableGutters elevation={0} sx={{ border: 1, borderColor: 'divider' }}>
-            <AccordionSummary expandIcon={<ExpandMore />} aria-controls="profile-image-settings-content" id="profile-image-settings-header">
-              <Typography fontWeight="bold">תמונת משתמש</Typography>
-            </AccordionSummary>
-            <AccordionDetails id="profile-image-settings-content" sx={{ p: { xs: 2, sm: 3 } }}>
-              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={3} alignItems={{ xs: 'stretch', sm: 'center' }}>
+            </Box>
+
+            <Box className="settings-contact-group settings-profile-card">
+              <Typography fontWeight="medium">תמונת משתמש</Typography>
+              <Stack direction="row" spacing={2} alignItems="center">
                 <Avatar
-                  src={imagePreview || undefined}
+                  className="profile-preview"
+                  src={imagePreview || defaultAvatar}
                   alt="תצוגה מקדימה של תמונת המשתמש"
-                  sx={{ width: 104, height: 104, bgcolor: 'action.selected', color: 'text.secondary', alignSelf: { xs: 'center', sm: 'auto' } }}
-                >
-                  <AccountCircle sx={{ fontSize: 72 }} />
-                </Avatar>
+                />
                 <Box>
-                  <Typography fontWeight="medium">תמונת פרופיל</Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, mb: 2 }}>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                     PNG, JPEG או WebP, עד 2MB
                   </Typography>
-                  <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+                  <Stack direction="column" spacing={1} alignItems="flex-start">
                     <Button variant="outlined" startIcon={<CloudUpload />} onClick={() => fileInputRef.current?.click()}>
                       בחירת תמונה
                     </Button>
@@ -364,16 +376,14 @@ const SettingsPage = ({ user, onUserUpdate, picklists, onPicklistsUpdate }) => {
                   />
                 </Box>
               </Stack>
-            </AccordionDetails>
-          </Accordion>
+            </Box>
 
-          <Accordion disableGutters elevation={0} sx={{ border: 1, borderColor: 'divider' }}>
-            <AccordionSummary expandIcon={<ExpandMore />} aria-controls="password-settings-content" id="password-settings-header">
-              <Typography fontWeight="bold">שינוי סיסמה</Typography>
-            </AccordionSummary>
-            <AccordionDetails sx={{ p: { xs: 2, sm: 3 } }}>
-              <Box sx={{ maxWidth: 760 }}>
-                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="stretch">
+            <Accordion className="settings-password-accordion" disableGutters elevation={0} sx={{ border: 1, borderColor: 'divider' }}>
+              <AccordionSummary expandIcon={<ExpandMore />} aria-controls="password-settings-content" id="password-settings-header">
+                <Typography fontWeight="medium">שינוי סיסמה</Typography>
+              </AccordionSummary>
+              <AccordionDetails id="password-settings-content">
+                <Stack spacing={2}>
                   <TextField
                     label="סיסמה נוכחית"
                     type="password"
@@ -383,7 +393,6 @@ const SettingsPage = ({ user, onUserUpdate, picklists, onPicklistsUpdate }) => {
                     onChange={(event) => setCurrentPassword(event.target.value)}
                     required={Boolean(currentPassword || newPassword || confirmPassword)}
                     fullWidth
-                    sx={{ flex: 1, minWidth: 0 }}
                   />
                   <TextField
                     label="סיסמה חדשה"
@@ -395,7 +404,6 @@ const SettingsPage = ({ user, onUserUpdate, picklists, onPicklistsUpdate }) => {
                     inputProps={{ minLength: 8 }}
                     required={Boolean(currentPassword || newPassword || confirmPassword)}
                     fullWidth
-                    sx={{ flex: 1, minWidth: 0 }}
                   />
                   <TextField
                     label="אימות סיסמה חדשה"
@@ -406,24 +414,21 @@ const SettingsPage = ({ user, onUserUpdate, picklists, onPicklistsUpdate }) => {
                     onChange={(event) => setConfirmPassword(event.target.value)}
                     required={Boolean(currentPassword || newPassword || confirmPassword)}
                     fullWidth
-                    sx={{ flex: 1, minWidth: 0 }}
                   />
                 </Stack>
-              </Box>
-            </AccordionDetails>
-          </Accordion>
-          </Box>
+              </AccordionDetails>
+            </Accordion>
           </Box>
         </AccordionDetails>
       </Accordion>
 
-      <Accordion className="settings-system-accordion" disableGutters elevation={1} sx={{ mt: 2 }}>
+      <Accordion className="settings-system-accordion" disableGutters elevation={1}>
         <AccordionSummary expandIcon={<ExpandMore />} aria-controls="system-settings-content" id="system-settings-header">
           <Typography variant="h6" fontWeight="bold">הגדרות מערכת</Typography>
         </AccordionSummary>
         <AccordionDetails sx={{ p: { xs: 2, sm: 3 } }}>
           <Box className="settings-system-form">
-            <Stack className="settings-system-fields" spacing={2}>
+            <Box className="settings-system-fields">
               <FormControlLabel className="settings-timer-option"
                 control={<Switch checked={includeSubtaskTimers} onChange={(event) => setIncludeSubtaskTimers(event.target.checked)} />}
                 label="כלול טיימרים בתתי־משימות"
@@ -464,40 +469,49 @@ const SettingsPage = ({ user, onUserUpdate, picklists, onPicklistsUpdate }) => {
               <FormControl className="settings-choice-group settings-required-group" component="fieldset">
                 <FormLabel className="settings-group-title" component="legend">שדות חובה נוספים</FormLabel>
                 <FormGroup className="settings-required-options">
-                  <Typography className="settings-subheading" variant="body2" fontWeight="medium">לקוחות</Typography>
+                  <Box className="settings-required-section">
+                    <Typography className="settings-subheading" variant="body2" fontWeight="medium">לקוחות</Typography>
                   <FormControlLabel className="settings-option" control={<Checkbox checked={requiredFields.customer?.includes('fullName') ?? true} onChange={() => toggleRequiredField('customer', 'fullName')} />} label="שם מלא" />
                   <FormControlLabel className="settings-option" control={<Checkbox checked={requiredFields.customer?.includes('phone') || false} onChange={() => toggleRequiredField('customer', 'phone')} />} label="טלפון" />
                   <FormControlLabel className="settings-option" control={<Checkbox checked={requiredFields.customer?.includes('email') || false} onChange={() => toggleRequiredField('customer', 'email')} />} label="אימייל" />
                   <FormControlLabel className="settings-option" control={<Checkbox checked={requiredFields.customer?.includes('notes') || false} onChange={() => toggleRequiredField('customer', 'notes')} />} label="הערות" />
-                  <Typography className="settings-subheading" variant="body2" fontWeight="medium">משימות</Typography>
+                  </Box>
+                  <Box className="settings-required-section">
+                    <Typography className="settings-subheading" variant="body2" fontWeight="medium">משימות</Typography>
                   <FormControlLabel className="settings-option" control={<Checkbox checked={requiredFields.task?.includes('title') ?? true} onChange={() => toggleRequiredField('task', 'title')} />} label="כותרת" />
                   <FormControlLabel className="settings-option" control={<Checkbox checked disabled />} label="סטטוס, עדיפות ותאריך יעד (חובה מערכתית)" />
                   <FormControlLabel className="settings-option" control={<Checkbox checked={requiredFields.task?.includes('customerId') || false} onChange={() => toggleRequiredField('task', 'customerId')} />} label="שיוך ללקוח" />
                   <FormControlLabel className="settings-option" control={<Checkbox checked={requiredFields.task?.includes('notes') || false} onChange={() => toggleRequiredField('task', 'notes')} />} label="הערות" />
-                  <Typography className="settings-subheading" variant="body2" fontWeight="medium">פגישות</Typography>
+                  </Box>
+                  <Box className="settings-required-section">
+                    <Typography className="settings-subheading" variant="body2" fontWeight="medium">פגישות</Typography>
                   <FormControlLabel className="settings-option" control={<Checkbox checked={requiredFields.appointment?.includes('title') ?? true} onChange={() => toggleRequiredField('appointment', 'title')} />} label="כותרת" />
                   <FormControlLabel className="settings-option" control={<Checkbox checked disabled />} label="סטטוס ושעת התחלה וסיום (חובה מערכתית)" />
                   <FormControlLabel className="settings-option" control={<Checkbox checked={requiredFields.appointment?.includes('customerId') || false} onChange={() => toggleRequiredField('appointment', 'customerId')} />} label="שיוך ללקוח" />
                   <FormControlLabel className="settings-option" control={<Checkbox checked={requiredFields.appointment?.includes('location') || false} onChange={() => toggleRequiredField('appointment', 'location')} />} label="מיקום" />
-                  <Typography className="settings-subheading" variant="body2" fontWeight="medium">תתי־משימות</Typography>
+                  </Box>
+                  <Box className="settings-required-section">
+                    <Typography className="settings-subheading" variant="body2" fontWeight="medium">תתי־משימות</Typography>
                   <FormControlLabel className="settings-option" control={<Checkbox checked={requiredFields.subtask?.includes('type') ?? true} onChange={() => toggleRequiredField('subtask', 'type')} />} label="סוג משימה" />
                   <FormControlLabel className="settings-option" control={<Checkbox checked={requiredFields.subtask?.includes('notes') || false} onChange={() => toggleRequiredField('subtask', 'notes')} />} label="הערה" />
                   <FormControlLabel className="settings-option" control={<Checkbox checked disabled />} label="תאריך התחלה וסיום (חובה מערכתית)" />
+                
+                  </Box>
                 </FormGroup>
               </FormControl>
-            </Stack>
+            </Box>
           </Box>
           <Typography variant="h6" fontWeight="bold" sx={{ mt: 4, mb: 2 }}>ערכי רשימות בחירה</Typography>
           <Box className="settings-picklists-grid">
             {picklistDefinitions.map(({ key, title }) => (
-              <Accordion key={key} disableGutters elevation={0} sx={{ border: 1, borderColor: 'divider' }}>
+              <Accordion key={key} className={key === 'taskPriority' ? 'settings-picklist-wide' : ''} disableGutters elevation={0} sx={{ border: 1, borderColor: 'divider' }}>
                 <AccordionSummary expandIcon={<ExpandMore />} aria-controls={`${key}-options`} id={`${key}-header`}>
                   <Typography fontWeight="medium">{title}</Typography>
                 </AccordionSummary>
                 <AccordionDetails id={`${key}-options`}>
                   <Stack spacing={1}>
                     {(editablePicklists[key] || []).map((option, index) => (
-                      <Stack key={option.value} className="settings-picklist-option" direction="row" spacing={1} alignItems="center">
+                      <Stack key={option.value} className="settings-picklist-option" direction="row" spacing={1} alignItems="flex-end">
                         <TextField
                           label="תווית"
                           value={option.label}
@@ -505,7 +519,7 @@ const SettingsPage = ({ user, onUserUpdate, picklists, onPicklistsUpdate }) => {
                           inputProps={{ maxLength: 60 }}
                           fullWidth
                         />
-                        {key === 'taskPriority' && <Box className="settings-picklist-colors" role="radiogroup" aria-label={`צבע לעדיפות ${option.label}`} sx={{ display: 'flex', gap: 0.75, flex: '0 0 auto' }}>
+                        {key === 'taskPriority' && <Box className="settings-picklist-colors" role="radiogroup" aria-label={`צבע לעדיפות ${option.label}`}>
                           {TASK_PRIORITY_COLORS.map((color) => <Button
                             key={color.id}
                             type="button"
@@ -539,14 +553,6 @@ const SettingsPage = ({ user, onUserUpdate, picklists, onPicklistsUpdate }) => {
           </Box>
         </AccordionDetails>
       </Accordion>
-
-      <Box className="settings-save-status" aria-live="polite">
-        {error && <Alert severity="error">{error}</Alert>}
-        {success && <Alert severity="success">{success}</Alert>}
-      </Box>
-      <Button variant="contained" startIcon={isSaving ? <CircularProgress size={18} color="inherit" /> : <Save />} onClick={handleSave} disabled={isSaving} sx={{ alignSelf: 'flex-start' }}>
-        שמירת כל השינויים
-      </Button>
     </Box>
   )
 }

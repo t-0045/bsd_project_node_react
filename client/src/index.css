@@ -183,6 +183,12 @@ a {
 	border-radius: 50%;
 	object-fit: cover;
 	vertical-align: middle;
+	background: var(--teal-soft);
+}
+
+.p-avatar.profile-preview {
+	width: 104px;
+	height: 104px;
 }
 
 main.p-container {
@@ -693,27 +699,62 @@ input[type='radio'] {
 	min-height: 100vh;
 	align-items: center;
 	justify-content: center;
-	padding-block: 1rem;
+	box-sizing: border-box;
+	padding: 3rem 5vw;
+	background-color: #e8f2ee;
+	background-image:
+		radial-gradient(ellipse at 12% 16%, rgba(241, 174, 126, 0.2), transparent 38%),
+		radial-gradient(ellipse at 88% 42%, rgba(54, 170, 148, 0.2), transparent 42%);
 }
 
 .auth-card {
 	width: 100%;
-	max-width: 28rem;
+	max-width: 38rem;
 	box-sizing: border-box;
 	border: 1px solid var(--line);
-	border-radius: 10px;
+	border-radius: 14px;
 	background: var(--paper);
-	box-shadow: 0 16px 42px rgba(32, 54, 64, 0.09);
+	box-shadow: 0 24px 64px rgba(32, 54, 64, 0.14);
 }
 
-.auth-card h1 {
-	margin-top: 0;
-	color: var(--ink);
-	font-size: 1.8rem;
+.auth-card .p-card-content {
+	padding: 3rem 3.5rem 3.25rem;
 }
 
-.auth-card [role='tablist'] {
-	margin-block: 1.25rem;
+.auth-card .auth-title {
+	margin: 0 0 0.5rem;
+	color: var(--teal-deep);
+	font-size: 2.6rem;
+	font-weight: 800;
+	line-height: 1.15;
+}
+
+.auth-card .auth-subtitle {
+	margin: 0 0 2rem;
+	color: var(--muted);
+	font-size: 1.15rem;
+}
+
+.auth-card .auth-form {
+	display: grid;
+	gap: 1.35rem;
+}
+
+.auth-card .p-field {
+	gap: 0.55rem;
+	font-size: 1.05rem;
+}
+
+.auth-card .p-field input {
+	min-height: 54px;
+	padding: 0.75rem 1rem;
+	border-radius: 8px;
+	font-size: 1.1rem;
+}
+
+.auth-card [role='alert'] {
+	margin-bottom: 1.5rem;
+	font-size: 1.05rem;
 }
 
 .p-field {
@@ -748,11 +789,20 @@ input[type='radio'] {
 .auth-card [role='tablist'] {
 	display: flex;
 	width: 100%;
-	margin-block: 1rem;
+	margin-block: 0 1.75rem;
 }
 
 .auth-card [role='tablist'] button {
 	flex: 1;
+	min-height: 52px;
+	font-size: 1.1rem;
+}
+
+.auth-card form > .p-button {
+	min-height: 56px;
+	margin-top: 0.5rem;
+	border-radius: 8px;
+	font-size: 1.15rem;
 }
 
 .p-surface {
@@ -786,15 +836,36 @@ input[type='radio'] {
 .dashboard-summary-card .p-card-content {
 	height: 100%;
 	box-sizing: border-box;
+	padding: 1.1rem 1.25rem;
 }
 
 .dashboard-summary-card p {
 	margin: 0;
 }
 
+.dashboard-summary-card .text-h3 {
+	color: var(--ink);
+	font-size: 2.5rem;
+	font-weight: 750;
+	line-height: 1.1;
+}
+
 .dashboard-active-timer-details,
+.dashboard-active-timer-header {
+	flex: 0 0 auto;
+}
+
+.dashboard-active-timer-body {
+	display: flex;
+	flex: 1 1 0;
+	align-items: center;
+	min-height: 0;
+	overflow: hidden;
+}
+
 .dashboard-active-timer-controls {
-	flex-wrap: wrap;
+	flex: 0 0 auto;
+	flex-wrap: nowrap;
 }
 
 .p-grid-item {
@@ -1314,4 +1385,848 @@ label:has(.p-radiobutton) {
 	.p-grid-item {
 		grid-column: span var(--grid-xl, var(--grid-lg, var(--grid-md, var(--grid-sm, var(--grid-xs, 12)))));
 	}
+}
+
+/* Record details dialog (task opened from the dashboard) */
+.record-details-dialog > h2 {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1rem;
+	padding: 1.5rem 2rem 1.1rem;
+	border-bottom: 1px solid var(--line);
+	color: var(--teal-deep);
+	font-size: 1.4rem;
+	font-weight: 750;
+	line-height: 1.3;
+}
+
+.record-details-content {
+	padding: 1.5rem 2rem 1rem;
+}
+
+.record-details-grid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 1.1rem 2rem;
+	margin-bottom: 1.75rem;
+}
+
+.record-detail-field {
+	display: grid;
+	gap: 0.2rem;
+	min-width: 0;
+}
+
+.record-detail-field .text-caption {
+	margin: 0;
+	color: var(--muted);
+	font-size: 0.85rem;
+	font-weight: 600;
+}
+
+.record-detail-field p:not(.text-caption) {
+	margin: 0;
+	color: var(--ink);
+	font-size: 1rem;
+	overflow-wrap: anywhere;
+}
+
+.record-detail-notes {
+	grid-column: 1 / -1;
+	padding: 0.85rem 1rem;
+	border: 1px solid var(--line);
+	border-radius: 8px;
+	background: var(--canvas);
+}
+
+.record-detail-notes p:not(.text-caption) {
+	white-space: pre-wrap;
+}
+
+.record-details-section-title {
+	margin: 0 0 0.75rem;
+	padding-top: 1.25rem;
+	border-top: 1px solid var(--line);
+	font-size: 1.05rem;
+	font-weight: 700;
+}
+
+.record-details-content .record-detail-subtask {
+	margin-bottom: 0.6rem;
+	padding: 0.85rem 1rem;
+	border: 1px solid var(--line);
+	border-inline-start: 4px solid var(--teal);
+	border-radius: 8px;
+	background: var(--paper);
+	box-shadow: none;
+}
+
+.record-detail-subtask p {
+	margin: 0;
+}
+
+.record-details-actions {
+	padding: 1rem 2rem 1.5rem;
+	border-top: 1px solid var(--line);
+}
+
+.dashboard-appointment-tile {
+	transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+
+.dashboard-appointment-tile:hover {
+	border-color: var(--teal);
+	box-shadow: 0 2px 10px rgba(8, 127, 114, 0.12);
+}
+
+.dashboard-appointment-tile:focus-visible {
+	outline: 2px solid var(--teal);
+	outline-offset: 2px;
+}
+
+.record-details-dialog .dialog-close-button {
+	flex: 0 0 auto;
+	min-width: 40px;
+	min-height: 40px;
+	padding: 0;
+	border-radius: 50%;
+	color: var(--muted);
+	font-size: 1.15rem;
+}
+
+.record-details-dialog .dialog-close-button:hover:not(:disabled) {
+	background: var(--canvas);
+	color: var(--ink);
+}
+
+/* Settings page */
+.settings-page {
+	display: flex;
+	flex-direction: column;
+	gap: 1.25rem;
+	width: 100%;
+	max-width: 64rem;
+	margin-inline: auto;
+	box-sizing: border-box;
+}
+
+.settings-page > h1 {
+	margin: 0;
+}
+
+.settings-page > .p-accordion {
+	margin-block: 0;
+	border-color: var(--line);
+	border-radius: 10px;
+	box-shadow: var(--shadow);
+}
+
+.settings-page > .p-accordion > .p-accordion-summary {
+	min-height: 4rem;
+	padding: 0.75rem 1.5rem;
+	background: transparent;
+}
+
+.settings-page > .p-accordion > .p-accordion-summary:hover {
+	background: #f7f9f9;
+}
+
+.settings-page > .p-accordion > .p-accordion-summary p {
+	margin: 0;
+	font-size: 1.15rem;
+}
+
+.settings-page > .p-accordion > .p-accordion-details {
+	padding: 1.75rem 2rem 2rem;
+}
+
+.settings-page .p-accordion .p-accordion {
+	margin-block: 0;
+	box-shadow: none;
+}
+
+.settings-page .p-accordion .p-accordion > .p-accordion-details {
+	padding: 1.25rem 1.5rem 1.5rem;
+}
+
+.settings-page .p-accordion-summary p {
+	margin: 0;
+}
+
+.settings-page .p-field input:disabled {
+	background: var(--canvas);
+	color: var(--muted);
+}
+
+.settings-personal-content {
+	display: grid;
+	gap: 2rem;
+}
+
+.settings-account-grid,
+.settings-contact-grid,
+.settings-picklists-grid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 1.5rem;
+	align-items: start;
+}
+
+.settings-account-grid > :nth-child(3) {
+	grid-column: 1;
+}
+
+.settings-contact-group {
+	display: grid;
+	gap: 0.9rem;
+	padding: 1.25rem;
+	border: 1px solid var(--line);
+	border-radius: 8px;
+	background: #fbfcfc;
+}
+
+.settings-contact-group > p {
+	margin: 0;
+	color: var(--ink);
+	font-size: 1rem;
+	font-weight: 700;
+}
+
+.settings-contact-group > .p-button {
+	justify-self: start;
+}
+
+.settings-contact-group > div > .p-button,
+.settings-picklist-option > .p-button {
+	min-height: 42px;
+}
+
+.settings-profile-password-grid {
+	display: grid;
+	gap: 1rem;
+}
+
+.settings-profile-password-grid > .p-accordion {
+	margin-block: 0;
+}
+
+.settings-page .text-h6 {
+	color: var(--ink);
+	font-size: 1.1rem;
+	font-weight: 700;
+}
+
+.settings-picklists-grid {
+	gap: 1rem;
+}
+
+.settings-picklists-grid > .p-accordion {
+	margin-block: 0;
+}
+
+.settings-picklist-option {
+	min-width: 0;
+}
+
+.settings-picklist-colors {
+	display: grid;
+	flex: 0 0 auto;
+	grid-template-columns: repeat(6, 1.5rem);
+	gap: 0.35rem;
+	align-self: center;
+}
+
+.settings-picklist-color-swatch {
+	width: 1.5rem;
+	min-width: 0;
+	height: 1.5rem;
+	min-height: 0;
+	padding: 0;
+	border-width: 2px;
+	border-radius: 50%;
+}
+
+.settings-picklist-color-swatch[aria-checked='true'] {
+	box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--ink);
+}
+
+.settings-save-status {
+	margin: 0;
+}
+
+.settings-save-status:empty {
+	margin-top: -1.25rem;
+}
+
+.settings-save-status [role='status'] {
+	padding: 0.75rem 1rem;
+	border: 1px solid #bfdccf;
+	border-radius: 7px;
+	background: #eff8f4;
+	color: var(--teal-deep);
+}
+
+.settings-page > .settings-save-button {
+	min-width: 14rem;
+	min-height: 46px;
+	font-size: 1rem;
+}
+
+/* Search row: button and counter line up with the input, not its label */
+.list-search-controls,
+.customers-search-row {
+	align-items: flex-end;
+}
+
+.list-search-controls .advanced-search-button,
+.customers-search-row .advanced-search-button {
+	align-self: flex-end;
+	min-height: 42px;
+	block-size: 42px;
+}
+
+.list-search-controls > p,
+.customers-search-row > .customer-count {
+	display: flex;
+	align-items: center;
+	align-self: flex-end;
+	min-height: 42px;
+	margin: 0;
+}
+
+/* Advanced search panel (customers, tasks, appointments) */
+.advanced-search-panel {
+	display: flex;
+	align-items: flex-end;
+	gap: 1rem;
+	margin-top: 0.75rem;
+	padding: 0.75rem 1rem;
+	border: 1px solid var(--line);
+	border-radius: 8px;
+	background: #fafcfc;
+}
+
+.customers-search-row + .advanced-search-panel {
+	margin-top: 0;
+}
+
+.advanced-search-grid {
+	display: grid;
+	flex: 1 1 auto;
+	grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+	gap: 0.6rem 0.85rem;
+	min-width: 0;
+}
+
+.advanced-search-actions {
+	flex: 0 0 auto;
+}
+
+.advanced-search-panel .p-field {
+	gap: 0.3rem;
+	font-size: 0.82rem;
+}
+
+.advanced-search-panel .p-field input,
+.advanced-search-panel .p-field select {
+	min-height: 36px;
+	padding: 0.3rem 0.6rem;
+	font-size: 0.9rem;
+}
+
+.advanced-search-actions .p-button {
+	min-height: 36px;
+	padding-inline: 0.75rem;
+	font-size: 0.85rem;
+}
+
+.list-search-controls .advanced-search-button {
+	padding-inline: 1rem;
+}
+
+/* Dropdown fields: no arrow */
+.p-field select {
+	appearance: none;
+	-webkit-appearance: none;
+	-moz-appearance: none;
+	background-image: none;
+	text-overflow: ellipsis;
+}
+
+.p-field select::-ms-expand {
+	display: none;
+}
+
+/* Settings accordions: no chevron */
+.settings-page .p-accordion-icon {
+	display: none;
+}
+
+/* ===== Settings page: side margins + multi-column layout ===== */
+.settings-page {
+	max-width: 88rem;
+}
+
+/* personal details: 1 col -> 2 cols -> 12-col grid */
+.settings-personal-content {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr);
+	gap: 1.25rem;
+	align-items: start;
+}
+
+.settings-personal-content > .settings-contact-group {
+	min-width: 0;
+}
+
+@media (min-width: 700px) {
+	.settings-personal-content {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+	.settings-personal-content > :nth-child(3) {
+		grid-column: 1 / -1;
+	}
+}
+
+@media (min-width: 900px) {
+	.settings-personal-content {
+		grid-template-columns: repeat(12, minmax(0, 1fr));
+	}
+	.settings-personal-content > :nth-child(-n + 3) {
+		grid-column: span 4;
+	}
+	.settings-personal-content > :nth-child(n + 4) {
+		grid-column: span 6;
+	}
+}
+
+@media (min-width: 1300px) {
+	.settings-personal-content > :nth-child(n + 4) {
+		grid-column: span 3;
+	}
+}
+
+/* system settings: fields side by side */
+.settings-system-fields {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr);
+	grid-auto-flow: dense;
+	gap: 1rem;
+	align-items: start;
+}
+
+.settings-system-fields > * {
+	min-width: 0;
+}
+
+.settings-hours-group {
+	max-width: none;
+}
+
+.settings-timer-option {
+	width: 100%;
+	box-sizing: border-box;
+}
+
+@media (min-width: 700px) {
+	.settings-system-fields {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+	.settings-hours-group,
+	.settings-required-group {
+		grid-column: 1 / -1;
+	}
+}
+
+@media (min-width: 1100px) {
+	.settings-system-fields {
+		grid-template-columns: repeat(5, minmax(0, 1fr));
+	}
+	.settings-hours-group {
+		grid-column: span 2;
+	}
+	.settings-required-group {
+		grid-column: 1 / -1;
+	}
+}
+
+/* required fields: one column per object type */
+.settings-required-options {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+	gap: 1rem;
+	align-items: start;
+}
+
+.settings-required-section {
+	display: grid;
+	gap: 0.15rem;
+	min-width: 0;
+	padding: 0.75rem;
+	border: 1px solid #e8edeb;
+	border-radius: 8px;
+	background: #fbfcfc;
+}
+
+.settings-required-section > .settings-subheading {
+	margin: 0 0 0.35rem;
+	padding: 0;
+	border: 0;
+	color: var(--teal-deep);
+	font-weight: 750;
+}
+
+@media (max-width: 600px) {
+	.settings-required-options {
+		grid-template-columns: minmax(0, 1fr);
+	}
+}
+
+/* picklists: several per row */
+.settings-picklists-grid {
+	grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+	gap: 1rem;
+}
+
+@media (min-width: 900px) {
+	.settings-picklists-grid > .settings-picklist-wide {
+		grid-column: span 2;
+	}
+}
+
+@media (max-width: 600px) {
+	.settings-page > .p-accordion > .p-accordion-details {
+		padding: 1rem;
+	}
+}
+
+/* picklists: all five side by side */
+.settings-picklists-grid {
+	grid-template-columns: minmax(0, 1fr);
+	gap: 0.75rem;
+	align-items: start;
+}
+
+.settings-picklists-grid > .p-accordion {
+	min-width: 0;
+}
+
+.settings-picklists-grid > .settings-picklist-wide {
+	grid-column: auto;
+}
+
+@media (min-width: 700px) {
+	.settings-picklists-grid {
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+	}
+}
+
+@media (min-width: 1100px) {
+	.settings-picklists-grid {
+		grid-template-columns: repeat(5, minmax(0, 1fr));
+	}
+}
+
+/* narrow cells: label + delete on one row, color swatches on their own row */
+.settings-picklist-option {
+	flex-wrap: wrap;
+}
+
+.settings-picklist-option > .p-field {
+	flex: 1 1 0;
+	width: auto !important;
+	min-width: 0;
+}
+
+.settings-picklist-option > .settings-picklist-colors {
+	order: 3;
+	flex: 1 1 100%;
+	grid-template-columns: repeat(6, 1.5rem);
+	justify-content: start;
+}
+
+.settings-picklists-grid .p-accordion-details {
+	padding: 0.75rem;
+}
+
+/* password accordion: collapsible, no chevron (like the other settings accordions) */
+.settings-personal-content > .settings-password-accordion {
+	min-width: 0;
+	margin-block: 0;
+	border-radius: 8px;
+	background: #fbfcfc;
+}
+
+.settings-page .settings-password-accordion > .p-accordion-summary {
+	min-height: 3rem;
+	padding: 0.5rem 1.25rem;
+}
+
+.settings-page .settings-password-accordion > .p-accordion-details {
+	padding: 0.5rem 1.25rem 1.25rem;
+}
+
+/* keep five picklists in a row only when there is enough room */
+@media (min-width: 1100px) and (max-width: 1399px) {
+	.settings-picklists-grid {
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+	}
+}
+
+
+/* less horizontal room now, so switch to the wide layouts later */
+@media (min-width: 1300px) and (max-width: 1599px) {
+	.settings-personal-content > :nth-child(n + 4) {
+		grid-column: span 6;
+	}
+}
+
+@media (min-width: 1100px) and (max-width: 1599px) {
+	.settings-picklists-grid {
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+	}
+}
+
+@media (min-width: 1600px) {
+	.settings-personal-content > :nth-child(n + 4) {
+		grid-column: span 3;
+	}
+	.settings-picklists-grid {
+		grid-template-columns: repeat(5, minmax(0, 1fr));
+	}
+}
+
+/* soft transition between pages */
+.page-transition {
+	display: flex;
+	flex: 1 1 0;
+	flex-direction: column;
+	min-height: 0;
+	animation: page-enter 0.45s cubic-bezier(0.22, 0.61, 0.36, 1) backwards;
+}
+
+@keyframes page-enter {
+	from {
+		opacity: 0;
+		transform: translateY(10px);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.page-transition {
+		animation: none;
+	}
+}
+
+/* settings page side margins: the single source of truth (tune the variable) */
+.settings-page {
+	--settings-side-margin: clamp(2rem, 10vw, 10rem);
+	box-sizing: border-box !important;
+	width: 100% !important;
+	margin-inline: auto !important;
+	padding-inline: var(--settings-side-margin) !important;
+}
+
+@media (max-width: 900px) {
+	.settings-page {
+		--settings-side-margin: 1.5rem;
+	}
+}
+
+@media (max-width: 600px) {
+	.settings-page {
+		--settings-side-margin: 1rem;
+	}
+}
+
+/* picklists: always all five in one row (from tablet width up) */
+@media (min-width: 800px) {
+	.settings-picklists-grid {
+		grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+		gap: 0.6rem;
+	}
+	.settings-picklists-grid > .settings-picklist-wide {
+		grid-column: auto !important;
+	}
+	.settings-picklists-grid .p-accordion-summary {
+		padding-inline: 0.75rem;
+	}
+	.settings-picklists-grid .p-accordion-summary p {
+		font-size: 0.95rem;
+	}
+	.settings-picklists-grid .p-accordion-details {
+		padding: 0.6rem;
+	}
+	.settings-picklist-option > .p-button {
+		min-width: 36px !important;
+		padding-inline: 0.25rem;
+	}
+}
+
+/* system settings: four boxes with the same height and the same look */
+.settings-system-fields {
+	align-items: stretch;
+}
+
+.settings-timer-option,
+.settings-hours-group,
+.settings-choice-group {
+	box-sizing: border-box;
+	min-width: 0;
+	margin: 0;
+	padding: 1rem 1.1rem 1.1rem;
+	border: 1px solid var(--line);
+	border-radius: 8px;
+	background: #fff;
+}
+
+.settings-timer-option {
+	display: flex;
+	align-items: center;
+	justify-content: flex-start;
+	width: 100%;
+	background: #eff8f4;
+	border-color: #cfe2dc;
+}
+
+.settings-hours-group {
+	align-content: start;
+	gap: 0.7rem;
+	padding-block: 1rem 1.1rem;
+}
+
+.settings-hours-group > p {
+	margin: 0;
+}
+
+.settings-hours-group > div {
+	gap: 0.75rem;
+}
+
+.settings-choice-group > .settings-option-list {
+	gap: 0.3rem 0.5rem;
+}
+
+/* inner spacing for the two big containers (personal details + system settings) */
+.settings-page > .p-accordion > .p-accordion-details,
+.settings-page > .settings-system-accordion > .p-accordion-details {
+	padding-block: 1.75rem 2rem !important;
+	padding-inline: clamp(1.25rem, 3.5vw, 3rem) !important;
+}
+
+.settings-page > .p-accordion > .p-accordion-summary,
+.settings-page > .settings-system-accordion > .p-accordion-summary {
+	padding-inline: clamp(1.25rem, 3.5vw, 3rem) !important;
+}
+
+/* slightly smaller outer margin so the containers keep their room */
+.settings-page {
+	--settings-side-margin: clamp(2rem, 8vw, 8rem);
+}
+
+@media (max-width: 900px) {
+	.settings-page {
+		--settings-side-margin: 1.5rem;
+	}
+}
+
+@media (max-width: 600px) {
+	.settings-page {
+		--settings-side-margin: 1rem;
+	}
+	.settings-page > .p-accordion > .p-accordion-details,
+	.settings-page > .settings-system-accordion > .p-accordion-details {
+		padding-inline: 1rem !important;
+	}
+}
+
+/* narrow screens: more breathing room on the sides, inside every box */
+@media (max-width: 900px) {
+	.settings-page {
+		--settings-side-margin: 2rem;
+	}
+	.settings-page > .p-accordion > .p-accordion-details,
+	.settings-page > .settings-system-accordion > .p-accordion-details,
+	.settings-page > .p-accordion > .p-accordion-summary,
+	.settings-page > .settings-system-accordion > .p-accordion-summary {
+		padding-inline: 1.5rem !important;
+	}
+}
+
+@media (max-width: 600px) {
+	.settings-page {
+		--settings-side-margin: 1.5rem;
+	}
+	.settings-page > .p-accordion > .p-accordion-details,
+	.settings-page > .settings-system-accordion > .p-accordion-details,
+	.settings-page > .p-accordion > .p-accordion-summary,
+	.settings-page > .settings-system-accordion > .p-accordion-summary {
+		padding-inline: 1.25rem !important;
+	}
+	.settings-contact-group,
+	.settings-choice-group,
+	.settings-hours-group,
+	.settings-timer-option,
+	.settings-required-section {
+		padding-inline: 1.1rem !important;
+	}
+	.settings-option {
+		padding-inline: 0.4rem;
+	}
+}
+
+/* save button at the top, next to the page title */
+.settings-page-header {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.75rem 1rem;
+}
+
+.settings-page-header > h1 {
+	margin: 0;
+}
+
+.settings-page-header > .settings-save-button {
+	align-self: center;
+	min-width: 13rem;
+	min-height: 46px;
+	font-size: 1rem;
+}
+
+@media (max-width: 600px) {
+	.settings-page-header > .settings-save-button {
+		width: 100%;
+	}
+}
+
+/* calendar day headers (week/day view and month weekday names) in bold */
+.calendar-day-header,
+.calendar-weekday-header {
+	font-weight: 800;
+	color: var(--ink);
+}
+
+/* every date in the calendar in bold: headers, month day numbers, current range/title */
+.calendar-day-header,
+.calendar-weekday-header,
+.calendar-date-number,
+.calendar-title {
+	font-weight: 800;
+	color: var(--ink);
+}
+
+/* dialog backdrop always covers the whole viewport */
+.dialog-backdrop {
+	position: fixed;
+	inset: 0;
+	width: 100vw;
+	height: 100dvh;
+	z-index: 1300;
 }

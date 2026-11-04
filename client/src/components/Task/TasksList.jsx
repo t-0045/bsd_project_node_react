@@ -266,7 +266,7 @@ const TasksList = ({ user, picklists }) => {
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
       <Paper className="list-filter-panel" sx={{ p: 2, mb: 3 }}>
         <Typography variant="h6" sx={{ mb: 1.5 }}>חיפוש וסינון משימות</Typography>
-        <Stack className="list-search-controls" direction="row" sx={{ width: '100%', direction: 'rtl' }}>
+        <Stack className="list-search-controls" direction="row" spacing={2} sx={{ width: '100%', direction: 'rtl' }}>
           <TextField
             fullWidth
             label="חיפוש בכל השדות"
@@ -278,13 +278,14 @@ const TasksList = ({ user, picklists }) => {
           <Button className="advanced-search-button" variant="outlined" onClick={() => setIsAdvancedSearchOpen((openState) => !openState)}>{isAdvancedSearchOpen ? 'סגירת חיפוש מתקדם' : 'חיפוש מתקדם'}</Button>
           <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'nowrap', flex: '0 0 auto' }}>{filteredTasks.length} משימות</Typography>
         </Stack>
-        {isAdvancedSearchOpen && <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)', xl: 'repeat(4, 1fr)' }, gap: 1, mt: 1.5 }}>
+        {isAdvancedSearchOpen && <Box className="advanced-search-panel"><Box className="advanced-search-grid">
           <TextField select label="לקוח" value={filters.customerId} onChange={(event) => updateFilter('customerId', event.target.value)}><MenuItem value="">כל הלקוחות</MenuItem>{availableCustomers.map((item) => <MenuItem key={item.id} value={item.id}>{item.fullName}</MenuItem>)}</TextField>
           <TextField select label="עדיפות" value={filters.priority} onChange={(event) => updateFilter('priority', event.target.value)}><MenuItem value="">כל העדיפויות</MenuItem>{taskPriorities.map((option) => <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>)}</TextField>
           <TextField select label="סטטוס" value={filters.status} onChange={(event) => updateFilter('status', event.target.value)}><MenuItem value="">כל הסטטוסים</MenuItem>{taskStatuses.map((option) => <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>)}</TextField>
           <TextField label="מתאריך" type="date" value={filters.fromDate} onChange={(event) => updateFilter('fromDate', event.target.value)} InputLabelProps={{ shrink: true }} />
           <TextField label="עד תאריך" type="date" value={filters.toDate} onChange={(event) => updateFilter('toDate', event.target.value)} InputLabelProps={{ shrink: true }} />
-          <Button startIcon={<Clear />} onClick={clearFilters} disabled={!Object.values(filters).some(Boolean)}>ניקוי מסננים</Button>
+        </Box>
+          <Box className="advanced-search-actions"><Button startIcon={<Clear />} onClick={clearFilters} disabled={!Object.values(filters).some(Boolean)}>ניקוי מסננים</Button></Box>
         </Box>}
       </Paper>
       <Box className="tasks-scroll-area">

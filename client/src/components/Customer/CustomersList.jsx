@@ -160,7 +160,7 @@ const CustomersList = ({ user, picklists }) => {
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
       <Box className="customers-search-panel">
       <Box className="customers-search-sticky">
-      <Box className="customers-search-row" sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
+      <Box className="customers-search-row" sx={{ display: 'flex', alignItems: 'flex-end', gap: 1, width: '100%' }}>
         <TextField
           fullWidth
           label="חיפוש בכל השדות"
@@ -180,8 +180,8 @@ const CustomersList = ({ user, picklists }) => {
       </Box>
 
       {isAdvancedSearchOpen && (
-        <Box sx={{ mb: 3, p: 2.5, border: '1px solid', borderColor: 'divider', borderRadius: 2, backgroundColor: 'rgba(8, 127, 114, 0.02)' }}>
-          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' }, gap: 2 }}>
+        <Box className="advanced-search-panel">
+          <Box className="advanced-search-grid">
             <TextField label="שם מלא" value={filters.fullName} onChange={(event) => updateFilter('fullName', event.target.value)} />
             <TextField label="טלפון" value={filters.phone} onChange={(event) => updateFilter('phone', event.target.value)} />
             <TextField label="אימייל" value={filters.email} onChange={(event) => updateFilter('email', event.target.value)} />
@@ -191,7 +191,7 @@ const CustomersList = ({ user, picklists }) => {
               {customerStatuses.map((option) => <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>)}
             </TextField>
           </Box>
-          <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-start' }}>
+          <Box className="advanced-search-actions">
             <Button startIcon={<Clear />} onClick={clearFilters} variant="text" disabled={!Object.values(filters).some(Boolean)}>
               ניקוי מסננים
             </Button>
